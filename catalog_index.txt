@@ -1,0 +1,460 @@
+# BZB GEAR — COMPLETE PRODUCT CATALOG INDEX
+# 397 products across 20 categories
+# Format: SKU  [I/O]  [signals]  [max_res]  [distance]  | description
+
+## PTZ & Video Cameras
+# 100 products
+  BG-ADAMO-4K12X-B                  12G-SDI+Dante+HDMI+NDI  4K60  | 4K UHD PTZ camera that supports HDMI 2  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-4K12X-B-31               12G-SDI+HDMI  4K60  | 4K UHD PTZ camera with 12x optical zoom that supports HDMI 2  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-4K12X-W                  12G-SDI+Dante+HDMI+NDI  4K60  | 4K UHD PTZ camera with 12x optical zoom and multiple output options including HDMI 2  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-4K12X-W-31               12G-SDI+HDMI  4K60  | 4K UHD live streaming PTZ camera with 12G-SDI and HDMI outputs that supports resolutions u…  [MULTI: includes-streaming+ includes-tally]
+  BG-ADAMO-4K25X-B                  12G-SDI+Dante+HDMI+NDI  4K60  | 4K UHD PTZ camera that supports HDMI 2  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-4K25X-B-31               12G-SDI+HDMI  4K60  | 4K UHD PTZ camera with auto tracking capabilities, offering video output via HDMI 2  [MULTI: includes-streaming+ includes-tally]
+  BG-ADAMO-4K25X-W                  12G-SDI+Dante+HDMI+NDI  4K60  | 4K UHD PTZ camera with 12x optical zoom that supports video output via HDMI, 12G-SDI, USB …  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-4K25X-W-31               12G-SDI+HDMI  4K60  | 4K UHD PTZ camera with 12G-SDI, HDMI, USB 2  [MULTI: includes-streaming+ includes-tally]
+  BG-ADAMO-4K31X-B-31               12G-SDI+HDMI  4K60  | 4K UHD live streaming PTZ camera with 12G-SDI, HDMI, USB 2  [MULTI: includes-ndi+ includes-streaming+ includes-tally]
+  BG-ADAMO-4K31X-W-31               12G-SDI+HDMI  4K60  | 4K UHD PTZ camera with 12G-SDI, HDMI, USB 2  [MULTI: includes-recording+ includes-streaming+ includes-tally]
+  BG-ADAMO-4KDA12X-B                12G-SDI+Dante+HDMI+NDI  4K60  | 4K UHD PTZ camera with 12x optical zoom that supports video output via HDMI 2  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-4KDA12X-B-31             12G-SDI+HDMI  4K60  | 4K UHD PTZ camera that provides high-resolution video output up to 4K@60Hz via HDMI and 12…  [MULTI: includes-streaming+ includes-tally]
+  BG-ADAMO-4KDA12X-W                12G-SDI+Dante+HDMI+NDI  4K60  | 4K UHD PTZ camera capable of outputting video signals via HDMI 2  [MULTI: encoder+streamer+ includes-ndi+ includes-recording]
+  BG-ADAMO-4KDA12X-W-31             12G-SDI+HDMI  4K60  | 4K UHD PTZ camera with 12x optical zoom that outputs video via HDMI 2  [MULTI: includes-ndi+ includes-streaming+ includes-tally]
+  BG-ADAMO-4KDA25X-B                12G-SDI+Dante+HDMI+NDI  4K60  | 4K UHD PTZ camera with 12x optical zoom that supports HDMI 2  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-4KDA25X-B-31             12G-SDI+HDMI  4K60  | 4K UHD PTZ camera with 12G-SDI, HDMI, USB 2  [MULTI: includes-recording+ includes-streaming+ includes-tally]
+  BG-ADAMO-4KDA25X-W                12G-SDI+Dante+HDMI+NDI  4K60  | 4K UHD PTZ camera capable of streaming and outputting video in multiple formats including …  [MULTI: includes-recording+ includes-streaming+ includes-tally]
+  BG-ADAMO-4KDA25X-W-31             12G-SDI+HDMI  4K60  | 4K UHD PTZ camera with 12G-SDI and HDMI outputs, capable of streaming video at resolutions…  [MULTI: includes-recording+ includes-streaming+ includes-tally]
+  BG-ADAMO-4KDA31X-B-31             12G-SDI+HDMI  4K60  | 4K UHD PTZ camera with 12x optical zoom, capable of outputting video signals via HDMI 2  [MULTI: includes-recording+ includes-streaming+ includes-tally]
+  BG-ADAMO-4KDA31X-W-31             12G-SDI+HDMI  4K60  | 4K UHD live streaming PTZ camera with 12G-SDI, HDMI, USB 2  [MULTI: includes-streaming+ includes-tally]
+  BG-ADAMO-4KND12X-B                12G-SDI+Dante+HDMI+NDI  4K60  | 4K UHD live streaming PTZ camera with 12x optical zoom, capable of outputting video signal…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-4KND12X-B-31             12G-SDI+HDMI  4K60  | 4K UHD PTZ camera with 12x optical zoom that supports HDMI 2  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-4KND12X-W                12G-SDI+Dante+HDMI+NDI  4K60  | 4K UHD PTZ camera that supports multiple output formats including HDMI 2  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-4KND12X-W-31             12G-SDI+HDMI  4K60  | 4K UHD PTZ camera with 12x optical zoom that outputs video via HDMI 2  [MULTI: includes-recording+ includes-streaming+ includes-tally]
+  BG-ADAMO-4KND25X-B                12G-SDI+Dante+HDMI+NDI  4K60  | 4K UHD PTZ camera that supports HDMI 2  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-4KND25X-B-31             12G-SDI+HDMI  4K60  | 4K UHD PTZ camera with 12G-SDI, HDMI, USB 2  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-4KND25X-W                12G-SDI+Dante+HDMI+NDI  4K60  | 4K UHD PTZ camera with 12x optical zoom and multiple output options including HDMI 2  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-4KND25X-W-31             12G-SDI+HDMI  4K60  | 4K UHD PTZ camera with 12G-SDI, HDMI, USB 2  [MULTI: includes-recording+ includes-streaming+ includes-tally]
+  BG-ADAMO-4KND31X-B-31             12G-SDI+HDMI  4K60  | 4K UHD PTZ camera with 12G-SDI, HDMI, USB 2  [MULTI: includes-recording+ includes-streaming+ includes-tally]
+  BG-ADAMO-4KND31X-W-31             12G-SDI+HDMI  4K60  | 4K UHD PTZ camera with 12G-SDI, HDMI, USB 2  [MULTI: includes-recording+ includes-streaming+ includes-tally]
+  BG-ADAMO-JR12X-B                  Dante+HDMI+NDI+SDI  1080p60  | 1080P FHD auto-tracking PTZ camera that supports HDMI, 3G-SDI, USB 2  [MULTI: includes-recording+ includes-streaming+ includes-tally]
+  BG-ADAMO-JR12X-W                  Dante+HDMI+NDI+SDI  1080p60  | 1080P FHD PTZ camera with 12x optical zoom and multiple output options including HDMI, 3G-…  [MULTI: includes-recording+ includes-streaming+ includes-tally]
+  BG-ADAMO-JR20X-B                  Dante+HDMI+NDI+SDI  1080p60  | 1080P FHD PTZ camera with 12x optical zoom and multiple output options including HDMI, 3G-…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-JR20X-W                  Dante+HDMI+NDI+SDI  1080p60  | 1080P FHD PTZ camera with 12X optical zoom, capable of outputting video signals via HDMI, …  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-JR30X-B                  Dante+HDMI+NDI+SDI  1080p60  | 1080P FHD PTZ camera with 12x optical zoom capable of streaming video via HDMI, 3G-SDI, US…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-JR30X-W                  Dante+HDMI+NDI+SDI  1080p60  | 1080P FHD PTZ camera with 12x optical zoom and multiple video outputs including HDMI, 3G-S…  [MULTI: includes-recording+ includes-streaming+ includes-tally]
+  BG-ADAMO-JRDA12X-B                Dante+HDMI+NDI+SDI  1080p60  | 1080P FHD PTZ camera with 12x optical zoom and multiple output options including HDMI, 3G-…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-JRDA12X-W                Dante+HDMI+NDI+SDI  1080p60  | 1080P FHD PTZ camera with 12x optical zoom and multiple video output options including HDM…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-JRDA20X-B                Dante+HDMI+NDI+SDI  1080p60  | 1080P FHD PTZ camera with 12x optical zoom and multiple video output options including HDM…  [MULTI: includes-recording+ includes-streaming+ includes-tally]
+  BG-ADAMO-JRDA20X-W                Dante+HDMI+NDI+SDI  1080p60  | 1080P FHD PTZ camera with 12x optical zoom and multiple video outputs including HDMI, 3G-S…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-JRDA30X-B                Dante+HDMI+NDI+SDI  1080p60  | 1080P FHD PTZ camera with 12x optical zoom and multiple video output options including HDM…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-JRDA30X-W                Dante+HDMI+NDI+SDI  1080p60  | 1080P FHD PTZ camera with 12x optical zoom and multiple video output options including HDM…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-JRND12X-B                Dante+HDMI+NDI+SDI  1080p60  | 1080P FHD PTZ camera with 12x optical zoom and multiple video output options including HDM…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-JRND12X-W                Dante+HDMI+NDI+SDI  1080p60  | 1080P FHD auto tracking PTZ camera with 12x optical zoom and multiple video outputs includ…  [MULTI: includes-recording+ includes-streaming+ includes-tally]
+  BG-ADAMO-JRND20X-B                Dante+HDMI+NDI+SDI  1080p60  | 1080P FHD PTZ camera with 12x optical zoom, capable of outputting video signals via HDMI, …  [MULTI: includes-ndi+ includes-streaming+ includes-tally]
+  BG-ADAMO-JRND20X-W                Dante+HDMI+NDI+SDI  1080p60  | 1080P FHD PTZ camera with 12x optical zoom and multiple video outputs including HDMI, 3G-S…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ADAMO-JRND30X-B                Dante+HDMI+NDI+SDI  1080p60  | 1080P FHD PTZ camera with 12x optical zoom and multiple video outputs including HDMI, 3G-S…  [MULTI: includes-recording+ includes-streaming+ includes-tally]
+  BG-ADAMO-JRND30X-W                Dante+HDMI+NDI+SDI  1080p60  | 1080P FHD PTZ camera with 12X optical zoom, capable of outputting video signals via HDMI, …  [MULTI: includes-recording+ includes-streaming+ includes-tally]
+  BG-AVENTO-4K                      1out  HDMI1.4+NDI+USB-C  4K30  | 4K AI-enabled dual-lens PTZ conference camera that captures video in resolutions up to 4K3…  [MULTI: includes-ndi+ includes-streaming]
+  BG-B20SHA                         HDMI+SDI  1080p  | 1080P FHD camera with 20X/30X optical zoom and simultaneous HDMI, 3G-SDI, and IP streaming…  [MULTI: includes-recording+ includes-streaming]
+  BG-B20SHAN                        HDMI+NDI+SDI  1080p  | The 1080P FHD 20X/30X camera streams video at resolutions up to 1080p@60Hz via HDMI, SDI, …  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-B30SHA                         HDMI+SDI  1080p  | This 1080P FHD camera features a 1/2  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-B30SHAN                        HDMI+NDI+SDI  1080p  | The 1080P FHD 20X/30X Streaming Box Camera provides high-definition video output at resolu…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-BPTZ-10XU                      1080p  | The Core 1080P FHD Huddle Room Camera features a 3X optical zoom and a 10X optical zoom op…
+  BG-BPTZ-3XU                       1080p  | 1080p Full HD PTZ camera with 3x optical zoom and USB 2
+  BG-BWEB-S                         1080p  | Full HD 1080p USB web camera with a 1/2
+  BG-BWEB-W                         1080p  | Full HD 1080p USB web camera featuring a 1/2  [MULTI: includes-recording+ includes-streaming]
+  BG-CAM-USB4K                      4K30  | 4K Ultra HD USB camera with a fixed focus lens and a 138° horizontal angle, capable of str…  [MULTI: includes-recording+ includes-streaming]
+  BG-EPTZ-AF                        1out  4K30  | 4K UHD ePTZ USB 3  [MULTI: includes-recording+ includes-streaming]
+  BG-EPTZ-UH4K                      HDMI2.0  4K30  8m  | 4K UHD ePTZ camera with HDMI 2  [MULTI: includes-ndi+ includes-streaming]
+  BG-LVPTZ-20XHSP-G                 HDMI+SDI  1080p60  | Full HD PTZ camera with 12X optical zoom and simultaneous HDMI and 3G-SDI outputs, support…
+  BG-LVUPTZ-12XHUS                  HDMI  1080p  | The PTZ 12X/20X Zoom camera captures video in 1080p resolution at various frame rates and …  [MULTI: includes-recording+ includes-streaming]
+  BG-LVUPTZ-12XSD                   SDI  1080p  | The PTZ 12X/20X Zoom 1080P FHD camera provides high-definition video output at resolutions…
+  BG-LVUPTZ-20XHUS                  HDMI  1080p  | PTZ camera with 20X optical zoom and 1080p resolution that supports HDMI and USB outputs, …  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-LVUPTZ-20XSD                   SDI  1080p  | The PTZ 20X Zoom 1080P FHD camera features a 1/2
+  BG-MAESTRO                        HDMI+NDI+SDI  1080p  | 8MP educational auto-tracking camera that outputs video via HDMI, SDI, and USB 3
+  BG-MAESTRO-H                      HDMI+NDI+SDI  1080p  | 8MP auto-tracking camera with multiple output options including HDMI, SDI, and USB 3
+  BG-ND-20XHSRP                     HDMI+NDI+SDI  1080p  | This 1080P FHD PTZ camera features a 20X optical zoom and supports HDMI, 3G-SDI, and NDI o…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-ND-30XHSRP                     HDMI+NDI+SDI  1080p  | 1080P FHD PTZ camera with 20X optical zoom and simultaneous HDMI, 3G-SDI, and NDI outputs,…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-NUCLEUS-10X                    HDMI+USB-C  4K60  | All-in-one Windows computer with an Intel i5 processor, 16GB RAM, and 512GB SSD, combined …
+  BG-NUTRIX                         HDMI+NDI  4K60  | Medical-grade PTZ camera capable of streaming 4K UHD video at 60 frames per second via HDM…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-PACKSHOT-C10X                  HDMI1.4  1080p  | 1080P FHD box camera that captures video in resolutions up to 1920x1080 at 30fps, featurin…  [MULTI: includes-recording+ includes-streaming]
+  BG-UC-MHD                         1080p  | 1080p USB conference camera with a built-in microphone, providing high-definition video at…
+  BG-UCM-B                          | Ceiling mount designed for universal compatibility with PTZ cameras, allowing for secure i…  [MULTI: includes-recording+ includes-streaming]
+  BG-UCM-G                          | Ceiling mount designed for universal compatibility with PTZ cameras, featuring adjustable …
+  BG-UCM-W                          | Ceiling mount designed for universal compatibility with various PTZ cameras, allowing for …
+  BG-UPTZ-12XHSU-B                  HDMI+NDI+SDI  8K30  | This Universal 1080P FHD PTZ camera features 12X optical zoom and supports multiple video …  [MULTI: includes-recording+ includes-streaming]
+  BG-UPTZ-12XHSU-S                  HDMI+NDI+SDI  8K30  | Universal PTZ camera capable of streaming in 1080p resolution with 12X optical zoom, offer…  [MULTI: includes-recording+ includes-streaming]
+  BG-UPTZ-12XHSU-W                  HDMI+NDI+SDI  8K30  | The Universal 1080P FHD PTZ camera features a 12X optical zoom and supports multiple video…  [MULTI: includes-recording+ includes-streaming+ production-switcher]
+  BG-UPTZ-20XHSU-B                  HDMI+NDI+SDI  8K30  | Universal PTZ camera with 12X optical zoom and multiple output options including HDMI, 3G-…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-UPTZ-20XHSU-S                  HDMI+NDI+SDI  8K30  | Universal PTZ camera capable of streaming in 1080p with 12X optical zoom, supporting HDMI,…  [MULTI: includes-recording+ includes-streaming]
+  BG-UPTZ-20XHSU-W                  HDMI+NDI+SDI  8K30  | Universal 1080P FHD PTZ camera with 12X optical zoom and multiple output options including…  [MULTI: includes-ndi+ includes-streaming]
+  BG-UPTZ-30XHSU-B                  HDMI+NDI+SDI  8K30  | Universal PTZ camera capable of streaming in 1080p resolution with 12X optical zoom and mu…  [MULTI: includes-recording+ includes-streaming]
+  BG-UPTZ-30XHSU-S                  HDMI+NDI+SDI  8K30  | Universal 1080P FHD PTZ camera with 12X optical zoom and multiple video outputs including …  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-UPTZ-30XHSU-W                  HDMI+NDI+SDI  8K30  | Universal 1080P FHD PTZ camera with 12X optical zoom and multiple output options including…  [MULTI: includes-recording+ includes-streaming]
+  BG-UPTZ-ND12X-B                   HDMI+NDI+SDI  8K30  | The Universal 1080P FHD PTZ camera features a 12X optical zoom lens and supports multiple …  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-UPTZ-ND12X-W                   HDMI+NDI+SDI  8K30  | Universal PTZ camera with 12X optical zoom and multiple output options including HDMI, SDI…
+  BG-UPTZ-ND20X-B                   HDMI+NDI+SDI  8K30  | Universal 1080P FHD PTZ camera with 12X optical zoom and multiple output options including…  [MULTI: includes-recording+ includes-streaming]
+  BG-UPTZ-ND20X-W                   HDMI+NDI+SDI  8K30  | Universal PTZ camera with 12X optical zoom and multiple video outputs (HDMI, 3G-SDI, USB 3  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-UPTZ-ND30X-B                   HDMI+NDI+SDI  8K30  | Universal 1080P FHD PTZ camera with 12X optical zoom and multiple output options including…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-UPTZ-ND30X-W                   HDMI+NDI+SDI  8K30  | Universal 1080P FHD PTZ camera with 12X optical zoom and multiple output options including…  [MULTI: includes-ndi+ includes-streaming]
+  BG-UWM-B                          | Universal PTZ camera wall mount designed to securely attach PTZ cameras to walls, providin…
+  BG-UWM-G                          | Universal PTZ camera wall mount designed to securely hold and position PTZ cameras for opt…
+  BG-UWM-W                          | Universal PTZ camera wall mount designed to securely attach various brands of PTZ cameras …
+  BG-VPTZ-10HSU3                    HDMI+NDI+SDI  8K30  | Compact PTZ camera capable of delivering 1080p Full HD video at up to 60 frames per second…  [MULTI: includes-recording+ includes-streaming]
+  BG-VPTZ-20HSU3                    HDMI+NDI+SDI  8K30  | Compact PTZ camera capable of delivering 1080p Full HD video at up to 60 frames per second…  [MULTI: includes-audio-embed+ includes-streaming]
+  BG-VPTZ-30HSU3                    HDMI+NDI+SDI  8K30  | Compact PTZ camera capable of delivering 1080p FHD video at up to 60 frames per second, wi…
+  BG-VPTZN-10HSU3                   HDMI+NDI+SDI  8K30  | Compact PTZ camera capable of delivering 1080p FHD video at up to 60 frames per second wit…  [MULTI: includes-audio-embed+ includes-recording+ includes-streaming]
+  BG-VPTZN-20HSU3                   HDMI+NDI+SDI  8K30  | Compact PTZ camera that captures 1080p FHD video with 10X, 20X, or 30X optical zoom, offer…  [MULTI: includes-audio-embed+ includes-recording+ includes-streaming]
+  BG-VPTZN-30HSU3                   HDMI+NDI+SDI  8K30  | Compact PTZ camera capable of capturing 1080p FHD video at up to 60fps with 10X, 20X, or 3…  [MULTI: includes-recording+ includes-streaming]
+
+## Matrix & Video Switchers
+# 35 products
+  BG-4K-1616MA                      16×16  HDMI2.0  8K30  | 16x16 HDMI 2
+  BG-4K-44MA                        4×4  HDMI2.0  8K30  | 4x4 HDMI 2
+  BG-4K-88MA                        8×8  HDMI2.0  8K30  | 8x8 4K UHD HDMI 2
+  BG-4K-VP1616                      HDMI2.0  4K60  | 16x16 HDMI matrix switcher that allows any of 16 HDMI sources to be routed to any of 16 HD…  [MULTI: multiviewer+monitor+ switcher+videowall]
+  BG-4K-VP44                        HDMI  4K60  | 4x4 HDMI matrix switcher that allows independent routing of 4 HDMI inputs to 4 HDMI output…  [MULTI: multiviewer+monitor+ switcher+videowall]
+  BG-4K-VP44PRO                     4×4  HDMI2.0  4K60  | 4x4 HDMI matrix switcher that seamlessly routes any of 4 HDMI 2  [MULTI: includes-recording+ includes-streaming+ multiviewer+monitor]
+  BG-4K-VP88                        HDMI  4K60  | 8x8 HDMI matrix switcher that allows independent routing of 8 HDMI sources to 8 HDMI outpu…  [MULTI: multiviewer+monitor+ switcher+videowall]
+  BG-4K-VP99PRO                     9×9  HDMI  4K60  | 9x9 HDMI matrix switcher that allows seamless switching between 9 HDMI sources and 9 displ…  [MULTI: multiviewer+monitor+ switcher+videowall]
+  BG-8K-1616MA                      16×16  HDMI2.1  8K60  | 16x16 HDMI 2
+  BG-8K-22MA                        HDMI2.1  8K60  | 2x2 HDMI 2
+  BG-8K-42MA                        HDMI2.1  8K60  | 4x2 HDMI 2  [MULTI: includes-audio-mix+ includes-streaming]
+  BG-8K-44MA                        4×4  HDMI2.1  8K60  | 4x4 HDMI 2  [MULTI: includes-recording+ includes-streaming]
+  BG-8K-88MA                        8×8  HDMI2.1  8K60  | 8x8 HDMI 2  [MULTI: includes-recording+ includes-streaming]
+  BG-8K-HCS41                       DP+HDMI2.1+USB-C  8K60  | 4x1 HDMI/USB-C switcher that allows users to connect up to three HDMI sources and one USB-…
+  BG-8K-HS21                        HDMI2.1  8K60  | 2x1 HDMI 2
+  BG-8K-HS21A                       HDMI2.1+USB-C  8K60  | 2x1 HDMI 2
+  BG-8K-HS21AR                      HDMI2.1+USB-C  8K60  | 2x1 HDMI 2
+  BG-8K-HS41                        HDMI2.1  8K60  | 4x1 HDMI 2
+  BG-8K-HS41A                       HDMI2.1+USB-C  8K60  | 4x1 HDMI 2
+  BG-8K-HS41AR                      HDMI2.1+USB-C  8K60  | 4x1 HDMI 2
+  BG-HDVS42U                        HDMI+USB-C  1080p  | 4-channel HDMI live streaming switcher that supports 1080p video input from four HDMI sour…  [MULTI: includes-audio-mix+ includes-ndi+ includes-recording]
+  BG-MFVS61-G2                      HDMI+SDI+USB-C  1080p  | 6-channel video switcher that supports up to 1080p resolution for both SDI and HDMI inputs…  [MULTI: includes-audio-mix+ includes-streaming+ production-switcher]
+  BG-MVS4X4-4KL                     4×4  HDMI2.0  8K30  | 4x4 HDMI matrix switcher and video wall processor that allows for seamless switching of up…  [MULTI: includes-streaming+ switcher+videowall]
+  BG-MVS4X4-CV                      HDMI1.4+USB-C  8K30  5m  | 4x4 HDMI matrix switcher that seamlessly routes any of 4 HDMI inputs to any of 4 outputs, …
+  BG-QUADFUSION-4K                  DP+HDMI  1080p  | 4-channel live streaming switcher that supports HDMI and DisplayPort inputs, allowing user…
+  BG-QUADFUSION-JR                  DP+HDMI  1080p60  | 4-channel video switcher that supports HDMI and DisplayPort inputs, allowing users to mix …  [MULTI: includes-recording+ includes-streaming+ production-switcher]
+  BG-UHD-42M                        HDMI2.0  8K30  | 4x2 HDMI matrix switcher that allows routing of any of 4 HDMI 2
+  BG-UHD-QVP-4X2                    HDMI2.0  8K30  | 4x2 HDMI 2  [MULTI: includes-streaming+ multiviewer+monitor]
+  BG-UHM                            1×1  HDMI2.0+USB-C  | 3-Port 4K UHD USB/HDMI camera video selector and mixer that allows for the blending of up …  [MULTI: includes-ndi+ includes-streaming]
+  BG-UM44-100M-KIT                  HDBaseT+HDMI  8K30  | 4x4 HDMI/Audio matrix switcher that routes any of 4 HDMI sources to any of 4 displays over…
+  BG-UM44-150L-KIT                  HDBaseT+HDMI2.0  8K30  | 4x4 HDMI matrix switcher that routes any of 4 HDMI sources to any of 4 displays over HDMI …  [MULTI: includes-ndi+ includes-streaming]
+  BG-UM88-100M-KIT                  HDBaseT+HDMI  8K30  | 8x8 4K UHD HDMI/Audio matrix switcher that routes any of 8 HDMI/HDBaseT sources to any of …
+  BG-UM88-150L-KIT                  HDBaseT+HDMI2.0  8K30  | 8x8 HDMI 2
+  BZ-MVS4X4-4K                      HDMI2.0  8K30  | 4x4 HDMI matrix switcher and video wall processor that allows routing of up to 4 HDMI 2  [MULTI: includes-audio-embed+ switcher+videowall]
+  BZB-SW-41A                        4×1  HDMI2.0  8K30  | 4x1 HDMI switcher that allows users to connect up to four HDMI sources to a single HDMI di…
+
+## Signal Extenders (HDBaseT / Fiber / Wireless)
+# 35 products
+  BG-AIR4KAST                       HDMI  4K60  50m  | 4K UHD wireless HDMI sender/receiver extender kit that transmits HDMI signals up to 164ft …
+  BG-AIR4KAST-MKX                   HDMI2.0+NDI  4K60  50m  | 4K60 UHD wireless HDMI extender kit that transmits HDMI 2
+  BG-AIR4KAST-MKX-2RX               HDMI2.0+NDI  4K60  50m  | 4K60 UHD wireless HDMI extender kit that transmits HDMI 2
+  BG-AIR4KAST-MKX-3RX               HDMI2.0+NDI  4K60  50m  | 4K60 UHD wireless HDMI extender kit that transmits HDMI 2
+  BG-AIR4KAST-MKX-4RX               HDMI2.0+NDI  4K60  50m  | 4K60 UHD wireless HDMI extender kit that transmits HDMI 2
+  BG-AIR4KAST-MKX-RX                HDMI2.0+NDI  4K60  50m  | 4K60 UHD wireless HDMI extender kit that transmits HDMI 2  [MULTI: includes-ndi+ includes-streaming]
+  BG-AIR4KAST-PRO                   HDMI2.0+NDI  4K60  100m  | 4K60 UHD wireless HDMI sender/receiver extender kit that transmits HDMI 2
+  BG-EXD-150C                       DP  8K30  150m  | 4K UHD DisplayPort 1
+  BG-EXH-100C5                      HDBaseT+HDMI  8K30  | 4K UHD HDMI HDBaseT extender that transmits uncompressed 4K video and audio signals up to …  [MULTI: includes-audio-embed+ includes-streaming]
+  BG-EXH-100C6                      HDMI2.0  8K30  100m  | 4K UHD HDMI/HDBaseT 3  [MULTI: includes-audio-embed+ includes-streaming]
+  BG-EXH-150C                       HDMI  8K30  | 4K UHD HDMI HDBaseT long range extender that transmits HDMI signals up to 490 feet over a …
+  BG-EXH-4KC7                       DP+HDBaseT+HDMI2.0+USB-C  8K30  5m  | 4K UHD HDMI/USB-C KVM HDBaseT 3
+  BG-EXH-50C                        HDMI2.0  8K30  | 4K UHD HDMI extender that transmits HDMI 2  [MULTI: includes-streaming+ switcher+videowall]
+  BG-EXH-50UWP-W                    DP+HDBaseT+HDMI2.0+USB-C  8K30  50m  | 4K UHD HDMI/USB-C wall plate transmitter/receiver kit that extends video and audio signals…
+  BG-EXH-70C3                       HDMI2.0  4K60  70m  | 4K UHD HDMI extender that transmits HDMI 2
+  BG-EXH-70C4                       HDMI2.0  4K60  70m  | 4K UHD HDMI HDBaseT extender that transmits HDMI 2
+  BG-EXH-70UCWP-W                   HDBaseT+HDMI2.0+NDI+USB-C  8K30  70m  | 3x1 HDMI/USB-C wall plate switcher and HDBaseT extender kit that allows for the selection …  [MULTI: includes-ndi+ includes-streaming]
+  BG-EXH-70UWP-W                    DP+HDBaseT+HDMI2.0+USB-C  8K30  70m  | 3x1 HDMI/USB-C/KVM wall plate switcher that allows users to select between three input sou…
+  BG-EXH-70WP-W                     HDBaseT+HDMI2.0+NDI  8K30  | 4K UHD HDMI wall plate transmitter/receiver kit that extends HDMI signals up to 230 feet u…
+  BG-EXH-8K150C                     HDMI2.1+NDI+USB-C  8K30  150m  | 8K UHD HDMI HDBaseT long-range extender that transmits HDMI 2
+  BG-EXH-8KC6                       HDBaseT+HDMI2.1  8K30  60m  | 8K UHD HDMI 2  [MULTI: includes-audio-embed+ production-switcher]
+  BG-EXH-8KF                        Fiber+HDMI2.1+USB-C  8K60  40m  | 8K UHD HDMI 2  [MULTI: includes-audio-embed+ includes-streaming]
+  BG-EXHD-50UWP-W                   DP+HDMI2.0  8K30  50m  | 4K UHD HDMI/MDP wall plate transmitter/receiver kit that extends HDMI and DisplayPort sign…
+  BG-EXHD-70UCWP-W                  DP+HDBaseT+HDMI2.0  8K30  70m  | 3x1 HDMI and Mini DisplayPort wall plate switcher that allows users to select between thre…
+  BG-EXHD-70UWP-W                   DP+HDBaseT+HDMI2.0  8K30  70m  | 3x1 HDMI/MDP/KVM wall plate switcher and HDBaseT extender kit that allows for the selectio…  [MULTI: includes-recording+ includes-streaming]
+  BG-EXHOC                          HDMI2.0  8K30  110m  | 4K UHD HDMI extender that transmits uncompressed HDMI 2  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-EXT-H70P                       HDMI1.4  8K30  | 4K UHD HDMI extender that transmits HDMI signals over Cat5e/6 cables up to 131 feet for 4K…
+  BG-EXUF                           Fiber  | 4-Port USB 2
+  BG-FES12G                         12G-SDI+Fiber  1080p  | 4K UHD 12G-SDI over fiber optic extender that transmits SDI signals up to 10 kilometers (6
+  BG-IPGEAR-XTREME-CORE             HDMI2.1+USB-C  8K30  170m  | 4K120 UHD HDMI 2
+  BG-IPGEAR-XTREME-F                DP+Fiber+HDMI2.1+USB-C  8K60  | 4K/8K UHD HDMI 2
+  BG-UHD-18GFE                      Fiber+HDMI2.0+NDI  8K30  | 4K UHD HDMI USB KVM extender kit that transmits HDMI 2
+  SFP-MM2LC-F                       | Multi-mode duplex LC-LC SFP module designed for use with BG-UHD-18GFE and BG-FES12G extend…
+  SFP-SM1LC-F                       | Single mode single strand LC-LC SFP module designed for use with BG-UHD-18GFE and BG-FES12…
+  SFP-SM1LC-FC                      | Single mode single strand LC-LC SFP module designed for use with BG-UHD-18GFE and BG-FES12…
+
+## Splitters & Distribution Amplifiers
+# 24 products
+  BG-3GS12                          SDI  1080p  | 1x2 SDI splitter that takes one 3G-SDI input and distributes it to two identical SDI outpu…  [MULTI: includes-recording+ includes-streaming+ switcher+videowall]
+  BG-3GS14                          SDI  1080p  | 1x4 SDI splitter that takes a single 3G-SDI input and distributes it to four 3G-SDI output…
+  BG-8K-DA12                        HDMI2.1+USB-C  8K60  | 1x2 HDMI 2
+  BG-8K-DA12A                       HDMI2.1  8K60  | 1x2 HDMI 2
+  BG-8K-DA12A-G2                    HDMI2.1+USB-C  8K60  | 1x2 HDMI 2
+  BG-8K-DA14                        HDMI2.1+USB-C  8K60  | 1x4 HDMI 2
+  BG-8K-DA14A-G2                    HDMI2.1+USB-C  8K60  | 1x4 HDMI 2
+  BG-8K-DA18                        HDMI2.1+USB-C  8K60  | 1x8 HDMI 2
+  BG-DA-12GS1X2                     12G-SDI+NDI  | 1x2 SDI splitter/distribution amplifier that takes a single 12G-SDI input and distributes …  [MULTI: includes-recording+ switcher+videowall]
+  BG-DA-12GS1X4                     12G-SDI+NDI  | 4K UHD 12G-SDI 1x4 splitter/distribution amplifier that takes one 12G-SDI input and distri…
+  BG-DA-12GS1X8                     12G-SDI+NDI  | 4K UHD 12G-SDI 1x8 splitter/distribution amplifier that takes a single 12G-SDI input and d…
+  BG-DA-14                          1×4  HDMI2.0  8K30  | 1x4 HDMI splitter that distributes a single HDMI 2
+  BG-DA-18G2                        1×8  HDMI2.0  4K60  | 1x8 HDMI splitter that takes a single HDMI 2
+  BG-DA-1X2AS                       1×2  HDMI2.0  8K30  | 1x2 HDMI splitter that duplicates a single HDMI 2  [MULTI: includes-recording+ includes-streaming]
+  BG-DA-1X4AS                       HDMI2.0+NDI  8K30  | 1x4 HDMI splitter that distributes a single HDMI 2
+  BG-HDA-E14                        HDMI1.4  8K30  | 1x4 HDMI splitter that distributes a single HDMI 1
+  BG-HDA-E18                        HDMI1.4  8K30  70m  | 1x8 HDMI splitter and distribution amplifier that allows one HDMI source to be distributed…
+  BG-UDA-E14                        HDBaseT+HDMI2.0  8K30  | 1x4 HDMI HDBaseT splitter that distributes a single HDMI 2
+  BG-UDA-E18                        HDBaseT+HDMI2.0  8K30  | 1x8 HDMI HDBaseT splitter that distributes a single HDMI 2
+  BG-UDAIC-E14                      HDMI2.0  4K60  70m  | 1x4 HDMI splitter that distributes a single HDMI 2
+  BG-UDAIC-E18                      HDMI2.0  4K60  70m  | 1x8 HDMI splitter that distributes a single HDMI 2
+  BG-UHD-DA1X16                     HDMI  4K60  | 1x16 HDMI splitter and distribution amplifier that takes a single 4K@60Hz HDMI input and d…
+  BG-UHD-DA1X24                     HDMI  4K60  | 1x24 HDMI splitter/distribution amplifier that takes a single 4K@60Hz HDMI input and distr…
+  BG-UHD-DA2X8                      HDMI+NDI  4K60  | 2x8 HDMI splitter/distribution amplifier that takes two HDMI inputs and distributes the si…
+
+## AV Over IP (Encoders/Decoders/Controllers)
+# 9 products
+  BG-IPGEAR-PRO-C                   HDMI  | Smart controller for the IPGEAR-PRO HDMI Over IP series that allows for the management and…
+  BG-IPGEAR-PRO-R                   HDMI+NDI  8K30  120m  | 4K UHD HDMI 2  [MULTI: includes-ndi+ switcher+videowall]
+  BG-IPGEAR-PRO-T                   HDMI+NDI  8K30  120m  | 4K UHD HDMI 2
+  BG-IPGEAR-ULTRA                   Fiber+HDMI2.0  8K30  | 4K UHD HDMI 2  [MULTI: includes-streaming+ switcher+videowall]
+  BG-IPGEAR-ULTRA-C                 4K60  100m  | Smart controller for the IPGEAR-ULTRA HDMI Over IP series that manages and routes 4K60 vid…
+  BG-IPGEAR-XTREME                  HDMI2.1+USB-C  8K30  | 4K UHD HDMI 2
+  BG-IPGEAR-XTREME-PRO              DP+HDMI2.1+USB-C  8K60  | 4K/8K UHD HDMI 2  [MULTI: includes-streaming+ switcher+videowall]
+  BG-VOP-CB                         HDMI  | Smart controller for the VOP-MT HDMI over IP series that allows users to manage and contro…
+  BG-VOP-MT                         HDMI+NDI  8K30  100m  | 4K UHD HDMI Over IP Multicast Transceiver that supports HDMI and NDI signals, allowing for…  [MULTI: includes-ndi+ includes-streaming+ switcher+videowall]
+
+## Stream Encoders & Decoders
+# 9 products
+  BG-HAVS                           HDMI  1080p  | 1080P H  [MULTI: encoder+streamer+ includes-streaming]
+  BG-IPGEAR-XTREME-W-R              HDMI2.1+USB-C  4K120  | 4K UHD HDMI 2  [MULTI: encoder+streamer+ includes-streaming]
+  BG-IPGEAR-XTREME-W-T              HDMI2.1+USB-C  4K120  | 4K UHD HDMI 2  [MULTI: encoder+streamer+ includes-streaming]
+  BG-STREAM-D                       Dante+HDMI2.0+NDI  8K30  | IP/UVC to HDMI 2  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-STREAM-DE                      Dante+HDMI2.0+NDI+SDI  1080p60  | 1 Channel SDI/HDMI encoder/decoder/recorder that supports video resolutions up to 1080p60 …  [MULTI: encoder+streamer+ includes-ndi+ includes-recording]
+  BG-STREAM-E                       Dante+HDMI+NDI  8K30  | HDMI to IP/UVC encoder that converts HDMI video signals up to 1080p at 60fps into various …  [MULTI: encoder+streamer+ includes-ndi+ includes-recording]
+  BG-STREAM-ND                      Dante+HDMI2.0+NDI  8K30  | IP/UVC to HDMI 2  [MULTI: includes-ndi+ includes-streaming]
+  BG-STREAM-NDE                     Dante+HDMI2.0+NDI+SDI  1080p60  | 1-channel SDI/HDMI encoder/decoder/recorder that supports video resolutions up to 1080p60 …  [MULTI: encoder+streamer+ includes-ndi+ includes-recording]
+  BG-STREAM-NE                      Dante+HDMI+NDI  8K30  | HDMI to IP/UVC encoder that supports H  [MULTI: encoder+streamer+ includes-ndi+ includes-recording]
+
+## SDI Equipment & Converters
+# 20 products
+  BG-8K-AA                          HDMI2.1+USB-C  8K60  | 8K60 HDMI 2  [MULTI: includes-recording+ includes-streaming]
+  BG-8K-AD                          HDMI2.1+USB-C  8K60  | 8K60 HDMI 2  [MULTI: includes-ndi+ includes-recording]
+  BG-8K-AE                          HDMI2.1+USB-C  8K60  | 8K HDMI 2  [MULTI: includes-ndi+ includes-streaming]
+  BG-8K-SA                          HDMI2.1+USB-C  8K60  | 8K60 HDMI 2
+  BG-CAB-12SDI100                   HDMI+SDI  4K60  | 12G-SDI cable designed for transmitting 4K UHD video signals at 60 frames per second over …
+  BG-CAB-12SDI150                   HDMI+SDI  4K60  | 12G-SDI cable designed to transmit 4K UHD video signals at 60 frames per second over dista…
+  BG-CAB-12SDI175                   HDMI+SDI  4K60  | 12G-SDI cable designed for transmitting 4K UHD video signals at 60 frames per second over …
+  BG-CAB-12SDI200                   HDMI+SDI  4K60  | 12G-SDI cable designed for transmitting 4K UHD video signals at 60 frames per second over …
+  BG-CAB-12SDI225                   HDMI+SDI  4K60  | 12G-SDI cable designed for transmitting 4K UHD video signals up to 60 frames per second ov…
+  BG-CAB-12SDI25                    HDMI+SDI  4K60  | 12G-SDI cable designed to transmit 4K UHD video signals up to 60 frames per second over di…
+  BG-CAB-12SDI250                   HDMI+SDI  4K60  | 12G-SDI cable designed for transmitting 4K UHD video signals at 60 frames per second over …
+  BG-CAB-12SDI50                    HDMI+SDI  4K60  | 12G-SDI cable designed for transmitting 4K UHD video signals up to 60 frames per second ov…
+  BG-CAB-12SDI75                    HDMI+SDI  4K60  | 12G-SDI cable designed for transmitting 4K UHD video signals up to 60 frames per second ov…  [MULTI: includes-recording+ includes-streaming]
+  BG-CAB-SDICAT100                  | This 4K UHD 12G-SDI + CAT6 combo cable integrates RG6 Quad Shield coaxial for video signal…
+  BG-CAB-SDICAT150                  | 4K UHD 12G-SDI + CAT6 combo cable that integrates RG6 quad shield coax and CAT6 UTP into a…
+  BG-CAB-SDICAT175                  | 4K UHD 12G-SDI+ CAT6 combo cable that integrates RG6 Quad Shield coaxial and CAT6 UTP into…
+  BG-CAB-SDICAT200                  | 4K UHD 12G-SDI + CAT6 combo cable that integrates RG6 Quad Shield coax and CAT6 UTP into a…
+  BG-CAB-SDICAT25                   | 4K UHD 12G-SDI+ CAT6 combo cable that integrates RG6 Quad Shield coax for video signal tra…
+  BG-CAB-SDICAT50                   | 4K UHD 12G-SDI+ CAT6 combo cable that integrates RG6 quad shield coaxial and CAT6 UTP into…
+  BG-CAB-SDICAT75                   | Dual-purpose combo cable that integrates RG6 Quad Shield coax for video signals and CAT6 U…
+
+## KVM Switches
+# 8 products
+  BG-8K-KVM21A                      2×1  HDMI2.1  8K60  | 2x1 KVM switch that allows users to control two computers with a single keyboard, mouse, a…
+  BG-8K-KVM22A                      4×2  HDMI2.1  8K60  | 8K UHD HDMI 2
+  BG-8K-KVM41A                      4×1  HDMI2.1  8K60  | 4x1 KVM switch that allows users to control up to four computers using a single keyboard, …
+  BG-EXHKVM-70C                     HDMI2.0  4K60  70m  | 4K UHD HDMI/KVM extender that transmits HDMI 2
+  BG-UHD-KVM41A                     4×1  HDMI2.0  4K60  | 4x1 KVM switch that allows users to control up to 4 computers using a single HDMI display …
+  BG-UHD-KVM41MV                    4×1  HDMI2.0  8K30  | 4x1 HDMI 2  [MULTI: includes-preview+ includes-streaming]
+  BG-USB-LR100                      8K30  100m  | 2-Port USB 2
+  BG-USB3-LR100                     USB-C  8K30  100m  | 4-Port USB 3
+
+## Multiviewers & Video Walls
+# 10 products
+  BG-MV41A-G2                       HDMI1.4  4K30  | 4x1 HDMI seamless switcher/scaler/multiviewer that supports up to 4K@30Hz resolution, allo…  [MULTI: includes-streaming+ multiviewer+monitor]
+  BG-UHD-MVS21A                     2×1  Fiber+HDMI2.0  8K30  | 2x1 HDMI seamless switcher that allows for the selection between two HDMI 2  [MULTI: includes-streaming+ multiviewer+monitor]
+  BG-UHD-MVS41A                     4×1  Fiber+HDMI2.0  8K30  | 4x1 HDMI seamless switcher that allows users to switch between four HDMI 2  [MULTI: includes-streaming+ multiviewer+monitor]
+  BG-UHD-MVS42MA                    4×2  Fiber+HDMI2.0  8K30  | 4x2 4K UHD HDMI seamless switcher that allows for the routing of up to 4 HDMI sources to 2…  [MULTI: includes-recording+ includes-streaming+ multiviewer+monitor]
+  BG-UHD-VW24                       HDMI2.0  8K30  | 4K UHD HDMI video wall processor/switcher that supports up to 4 displays, allowing for sea…
+  BG-UHD-VW29                       HDMI2.0  4K60  | 4K UHD HDMI video wall processor/switcher that supports up to 9 displays, allowing for the…
+  BG-UHD-VW2X2                      HDMI  4K60  | 2x2 HDMI video wall controller that allows a single 4K60 source to be displayed across fou…
+  BG-UHD-VW2X2A                     1×4  HDMI2.0+USB-C  8K30  | 2x2 video wall controller that accepts one HDMI or USB-C input and outputs to four display…
+  BG-UHD-VWP-1X4                    DP+HDMI2.0+NDI  8K30  | 4K UHD HDMI/DisplayPort video wall processor that accepts one HDMI and one DisplayPort inp…
+  BG-UHD-VWP19                      DP+HDMI2.0+NDI+USB-C  8K30  | 4K UHD advanced multi-input video wall processor that supports up to 9 displays, allowing …
+
+## Presentation Switchers
+# 8 products
+  BG-C-USB                          | USB flash drive auto-launcher that connects to BG-Connexio presentation switchers, allowin…
+  BG-CONNEXIO                       1out  HDMI2.0  1080p  | 4K UHD wireless presentation collaboration solution that allows users to connect their dev…
+  BG-PS21-4K                        HDMI2.0+USB-C  4K60  | 2-Port 4K UHD KVM presentation switcher that accepts one HDMI and one USB-C input, outputt…
+  BG-PSC11X2-HDBT                   2×1  HDBaseT+HDMI  4K30  | 11x2 presentation scaler switcher that accepts up to 11 video inputs including HDMI, VGA, …
+  BG-PSC6X2-4K                      1in  DP+HDMI+USB-C  4K60  | 6x2 presentation switcher that allows for the connection of up to 6 video sources (3x HDMI…  [MULTI: includes-audio-embed+ includes-recording+ includes-streaming]
+  BG-PSC7X2                         1in  HDMI  4K30  | 7x2 presentation switcher scaler that accepts up to 7 video inputs (4x HDMI, 1x VGA, 1x YP…
+  BG-PSC8X2HDB                      HDBaseT+HDMI2.0  8K30  | 8x2 4K UHD seamless presentation switcher that allows for the routing of up to 8 HDMI sour…  [MULTI: includes-ndi+ includes-streaming]
+  BG-SC-GRHU                        HDMI  | HDMI and USB 3
+
+## PTZ Camera Controllers
+# 12 products
+  BG-COMMANDER                      8K30  | Universal joystick controller for PTZ cameras that supports IP and serial control protocol…  [MULTI: includes-streaming+ ptz-controller+joystick]
+  BG-COMMANDER-G2                   NDI  | Universal joystick controller for PTZ cameras that supports NDI and various protocols incl…  [MULTI: includes-ndi+ includes-streaming+ ptz-controller+joystick]
+  BG-COMMANDER-JR                   NDI  | Compact joystick controller designed for controlling PTZ cameras via RS-232/422 and IP con…  [MULTI: includes-streaming+ ptz-controller+joystick]
+  BG-COMMANDER-PRO                  HDMI+NDI  4K60  | Professional joystick controller for PTZ cameras that supports IP and serial control via p…  [MULTI: includes-ndi+ includes-streaming+ ptz-controller+joystick]
+  BG-COMMANDER-ULTRA                HDMI2.0+USB-C  8K30  | 4-channel production switcher and joystick controller that supports 4K UHD video up to 60H…  [MULTI: includes-recording+ includes-streaming+ production-switcher]
+  BG-COMMANDER-ULTRAX               HDMI+USB-C  4K30  | All-in-one 4K IP production switcher that accepts up to 4 HDMI inputs and provides 2 HDMI …  [MULTI: includes-recording+ includes-streaming+ production-switcher]
+  BG-STUDIO-CORE-B                  HDMI+SDI  8K30  | The Essential 3-Camera HDMI Live Production Studio Bundle includes three PTZ cameras with …  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-STUDIO-CORE-W                  HDMI+SDI  8K30  | This essential live production studio bundle includes three PTZ cameras with 20x optical z…  [MULTI: includes-recording+ includes-streaming+ production-switcher]
+  BG-STUDIO-PRO-B                   HDMI+SDI  1080p60  | Professional broadcast production bundle featuring three AI auto-tracking PTZ cameras with…  [MULTI: includes-streaming+ production-switcher+ ptz-controller]
+  BG-STUDIO-PRO-N-B                 HDMI+NDI+SDI  1080p60  | Professional 3-camera broadcast production bundle featuring AI auto-tracking PTZ cameras, …  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-STUDIO-PRO-N-W                 HDMI+NDI+SDI  1080p60  | Professional 3-camera broadcast production bundle featuring NDI|HX3 technology, allowing f…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-STUDIO-PRO-W                   HDMI+SDI  1080p60  | Professional 3-camera broadcast production bundle that includes AI auto-tracking PTZ camer…  [MULTI: includes-recording+ includes-streaming+ production-switcher]
+
+## Capture Cards & Converters
+# 14 products
+  BG-12GCSA                         12G-SDI+HDMI+USB-C  8K30  | USB-C video capture card that supports 12G-SDI input with resolutions up to 8K30 and provi…  [MULTI: includes-recording+ includes-streaming]
+  BG-3GSH                           1×1  HDMI+SDI  8K30  | The 1080P FHD 3G-SDI to HDMI Long Distance Converter/Amplifier converts 3G-SDI signals to …
+  BG-4K120CHA                       HDMI2.1+USB-C  8K30  | USB-C 4K120 video capture card that captures video signals up to 4K@120Hz with HDMI 2  [MULTI: includes-recording+ includes-streaming]
+  BG-4KBHS                          12G-SDI+HDMI2.0  1080p  | Bi-directional converter that seamlessly converts HDMI 2  [MULTI: includes-audio-embed+ includes-streaming]
+  BG-4KBHS-PRO                      12G-SDI+HDMI2.0  8K30  | Bi-directional HDMI 2  [MULTI: includes-audio-embed+ includes-recording+ includes-streaming]
+  BG-4KCH                           HDMI+USB-C  8K30  | USB-C 4K UHD HDMI video capture card that captures video signals up to 4K@30Hz with an inp…  [MULTI: includes-recording+ includes-streaming]
+  BG-4KCHA                          HDMI+USB-C  8K30  | USB-C 4K60 video capture card that captures video signals up to 4K@30 and 1080p@120, with …  [MULTI: includes-audio-mix+ includes-recording+ includes-streaming]
+  BG-4KHS                           12G-SDI+HDMI  4K60  | 4K UHD HDMI 2  [MULTI: includes-audio-embed+ production-switcher]
+  BG-4KSH                           12G-SDI+HDMI  4K60  | Converts 12G-SDI, 6G-SDI, and 3G-SDI signals to HDMI 2
+  BG-CAP-HA                         HDMI  4K60  | The USB 3  [MULTI: includes-audio-embed+ includes-recording+ includes-streaming]
+  BG-CHA                            HDMI  1080p  | USB 3  [MULTI: includes-recording+ includes-streaming]
+  BG-CSA                            SDI  1080p  | USB 3  [MULTI: includes-recording+ includes-streaming]
+  BG-H3GS                           1×1  HDMI+SDI  8K30  | Converts HDMI signals to 3G-SDI, HD-SDI, or SD-SDI formats, allowing for long-distance tra…  [MULTI: includes-ndi+ production-switcher]
+  BG-UHD-SCVEA                      HDMI+NDI  1080p  | 4K UHD multi-format converter that accepts HDMI, DisplayPort, VGA, CVBS, and YPbPr inputs …  [MULTI: includes-audio-embed+ includes-streaming]
+
+## Audio Equipment
+# 14 products
+  BG-A1616MD                        12×12  Dante  8K30  | 16x16 balanced digital audio processor and matrix that supports 12 channels of microphone …
+  BG-A88M                           8×8  8K30  | 8x8 balanced digital audio processor and matrix that routes audio signals from 8 inputs to…
+  BG-AMP150WD                       Dante  8K30  | 2-channel Class D amplifier with 150W output at 8Ω, featuring 2x2 Dante digital audio inpu…
+  BG-AMP2X20                        | 2-channel audio amplifier providing 40W output at 8 Ohms in bridged mono mode or 20W per c…
+  BG-AMPC40                         Fiber+NDI  | 2-channel audio amplifier that delivers 40W output at either 70V or 100V, supporting multi…
+  BG-AUD-TCS                        8K30  170m  | This Stereo/Toslink/Coax Audio Extender kit transmits audio signals over Cat5e/6/7 cables,…
+  BG-JTSCM22G12-B                   | Cardioid condenser microphone designed for ceiling installation, capturing sound primarily…
+  BG-JTSCM22G12-W                   | 12-inch cardioid condenser microphone designed for high-output audio capture in conference…
+  BG-MIC-U1                         NDI  8K30  | Compact USB conference microphone with a half-cardioid directional pattern, designed to ca…  [MULTI: includes-recording+ includes-streaming]
+  BG-OMNITALK                       NDI+USB-C  | USB/Bluetooth desktop conference speakerphone with 360-degree audio pickup, featuring two …
+  BG-OMNITALK-PRO                   USB-C  6m  | USB and Bluetooth wireless desktop conference speakerphone with a 360-degree audio pickup …
+  BG-SPEAKP300-ANC                  USB-C  8K30  5m  | USB/Bluetooth speakerphone designed for conference calls, featuring a 5-meter microphone p…
+  BG-SPEAKP300-C                    USB-C  8K30  5m  | USB/Bluetooth speakerphone with a 5-meter microphone pickup range and daisy-chain capabili…
+  BG-UHD-KVM21A                     2×1  HDMI  4K60  | 2x1 KVM switcher that allows users to control two computers using a single HDMI display an…
+
+## Network Switches (AV-optimized)
+# 20 products
+  BG-STUDIO-CORE-N-B                HDMI+NDI+SDI  8K30  | The Essential 3-Camera NDI|HX Live Production Studio Bundle provides a complete solution f…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-STUDIO-CORE-N-W                HDMI+NDI+SDI  8K30  | This live production studio bundle includes three PTZ cameras capable of outputting video …  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-VPTZ10-BDL                     HDMI+NDI+SDI  8K30  | This 1080P PTZ camera system features HDMI, SDI, and USB 3  [MULTI: includes-recording+ includes-streaming+ production-switcher]
+  BG-VPTZ20-BDL                     HDMI+NDI+SDI  8K30  | This bundle includes a 1080P PTZ camera with optical zoom options of 10X, 20X, or 30X, cap…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-VPTZ30-BDL                     HDMI+NDI+SDI  8K30  | This bundle includes a 1080P PTZ camera with 10X, 20X, or 30X optical zoom capabilities, s…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  NET-00HN43                        | 8-port Multi-Gigabit Ethernet switch that supports 100BASE-TX, 1000BASE-T, and 2
+  NET-5DP433                        | 8-port unmanaged Gigabit Ethernet switch with 60W PoE budget, supporting 802
+  NET-6RU905                        | 16-port unmanaged Gigabit Ethernet switch with 8 PoE++ ports and 8 PoE+ ports, providing a…
+  NET-8LU027                        | 5-port Gigabit Ethernet switch with PoE+ capability, providing a total power budget of 63W…
+  NET-M4250-10G2F-POE+PC            USB-C  | Managed network switch with 12 ports, including 10x 1G PoE+ ports providing 30W each and 2…
+  NET-M4250-16XF-PC                 Fiber+USB-C  | 16-port managed switch with 10 Gigabit SFP+ ports, supporting both 1G and 10G fiber connec…
+  NET-M4250-26G4F-POE+PC            USB-C  | Managed network switch with 30 ports, including 24 PoE+ ports providing up to 30W each and…
+  NET-M4250-40G8F-POE+PC            USB-C  | Managed network switch with 48 ports, including 40 PoE+ ports providing 30W each for a tot…
+  NET-M4250-40G8XF-POE++PC          USB-C  | Managed network switch with 48 ports, providing 40x 1G PoE++ (90W per port) and 8x SFP+ fo…
+  NET-M4250-40G8XF-POE+PC           USB-C  | Managed network switch with 48 ports, including 40 PoE+ (1G) ports providing up to 30W per…
+  NET-M4300-12X12F-PC               8K30  | Layer 3 stackable managed switch with 12 10GBASE-T copper ports and 12 SFP+ ports, providi…
+  NET-M4300-24X-PC                  8K30  | 24-port managed switch providing 10GbE connectivity through 24 copper ports and 4 shared S…
+  NET-M4300-24X24F-PC               8K30  | Stackable managed network switch with 48 ports, including 24 10GBASE-T copper ports and 24…
+  NET-M4300-48X-PC                  8K30  | 48-port managed switch with 48 x 10GbE RJ45 ports and 4 shared SFP+ ports, providing a tot…  [MULTI: includes-recording+ includes-streaming]
+  NET-M4300-8X8F-PC                 | Stackable managed switch with 16 ports, including 8x10GBASE-T and 8xSFP+, providing Layer …
+
+## Integration & Control Tools
+# 7 products
+  BG-AVTPG-4K                       HDMI2.0+NDI  8K30  | The 4K/1080P HDMI 2  [MULTI: includes-ndi+ includes-streaming]
+  BG-AVTPG-8K                       HDMI2.1+NDI  8K60  | Advanced signal test generator and analyzer that supports HDMI 2
+  BG-AVTPG-KIT                      HDMI2.0+NDI  8K30  | The BG-AVTPG-KIT is an HDMI 2
+  BG-AVTPG-MINI                     HDMI2.0  8K30  | Portable HDMI 2
+  BG-AVTPG-MINI-G2                  HDMI2.1+USB-C  8K60  | Portable HDMI 2
+  BG-AVTPG2-KIT                     HDMI2.1+NDI+USB-C  8K60  | The BG-AVTPG-4K and BG-AVTPG-MINI-G2 Installer Kit is a generator and analyzer that suppor…  [MULTI: includes-ndi+ includes-streaming]
+  BG-SDITPG-G2                      12G-SDI  8K30  50m  | 12G-SDI video test pattern generator that supports multiple resolutions up to 4K at 60Hz a…
+
+## Videobars (All-in-one conferencing)
+# 4 products
+  BG-CYCLOPS-4K-B                   HDMI+NDI  1080p60  | Intelligent 4K UHD video bar that captures video at resolutions up to 4K30 via HDMI and US…
+  BG-CYCLOPS-4K-W                   HDMI+NDI  1080p60  | Intelligent 4K UHD video bar that captures video at resolutions up to 4K30 via HDMI and US…
+  BG-CYCLOPS-EXT                    NDI  3m  | Extension microphone designed for the BG-CYCLOPS-4K video bar, featuring a 10ft (3m) picku…  [MULTI: includes-ndi+ includes-streaming]
+  BG-CYCLOPS-PRO                    HDMI+NDI+USB-C  1080p  | 4K UHD video bar featuring a dual-lens system with a 120° wide-angle lens and a 12x optica…  [MULTI: includes-ndi+ includes-streaming]
+
+## Medical Carts
+# 3 products
+  BG-MR301-HSU10X-5M                1080p  | Medical-grade roll cart designed for telehealth applications, featuring a 10X PTZ camera t…
+  BG-MR700-HSU10X-5M                1080p  | Medical-grade mobile cart designed to support a laptop or computer while integrating a 10X…
+  BG-MR7001-HSU10X-5M               8K30  | Medical-grade roll cart designed to support laptops and medical devices while providing a …
+
+## Cables & Fiber Kits
+# 48 products
+  BG-CAB-CAT6-10                    | Cat6 Ethernet cable rated for 550 MHz, designed to support data transmission speeds up to …
+  BG-CAB-CAT6-100                   | Cat6 Ethernet cable with a bandwidth of 550 MHz, designed for high-speed data transmission…
+  BG-CAB-CAT6-150                   | Cat6 Ethernet cable supporting up to 550 MHz bandwidth, designed for high-speed data trans…
+  BG-CAB-CAT6-200                   | Cat6 Ethernet cable rated for 550 MHz, capable of supporting data transmission speeds up t…
+  BG-CAB-CAT6-25                    | 25-foot Cat6 Ethernet cable supporting up to 550 MHz bandwidth for high-speed data transmi…  [MULTI: includes-ndi+ includes-streaming]
+  BG-CAB-CAT6-250                   | Cat6 Ethernet cable rated for 550 MHz, designed for high-speed data transmission over dist…
+  BG-CAB-CAT6-328                   | Cat6 Ethernet cable supporting up to 550 MHz bandwidth and data transmission speeds of 1 G…
+  BG-CAB-CAT6-50                    | Cat6 Ethernet cable designed for high-speed data transmission up to 550 MHz, supporting 10…
+  BG-CAB-CAT6-75                    | Cat6 Ethernet cable supporting up to 550 MHz bandwidth, capable of transmitting data at sp…
+  BG-CAB-H21A10                     Fiber+HDMI  8K60  | 8K UHD HDMI 2
+  BG-CAB-H21A100                    Fiber+HDMI  8K60  | 8K UHD HDMI 2
+  BG-CAB-H21A15                     Fiber+HDMI  8K60  | 8K UHD HDMI 2
+  BG-CAB-H21A20                     Fiber+HDMI  8K60  | 8K UHD HDMI 2
+  BG-CAB-H21A30                     Fiber+HDMI  8K60  | 8K UHD HDMI 2
+  BG-CAB-H21A40                     Fiber+HDMI  8K60  | 8K UHD HDMI 2
+  BG-CAB-H21A50                     Fiber+HDMI  8K60  | 8K UHD HDMI 2
+  BG-CAB-H21A75                     Fiber+HDMI  8K60  | 8K UHD HDMI 2
+  BG-CAB-H21C1                      Fiber+HDMI  8K60  | 8K UHD HDMI 2
+  BG-CAB-H21C2                      Fiber+HDMI  8K60  | 8K UHD HDMI 2
+  BG-CAB-H21C3                      Fiber+HDMI  8K60  | 8K UHD HDMI 2
+  BG-CAB-H21C5                      Fiber+HDMI  8K60  | 8K UHD HDMI 2
+  BG-CAB-HA20                       HDMI2.0  1080p  | Active optical cable supporting HDMI 2
+  BG-CAB-HA40                       HDMI2.0  1080p  | Active optical cable that transmits HDMI 2  [MULTI: includes-recording+ includes-streaming+ production-switcher]
+  BG-CAB-HA50                       HDMI2.0  1080p  | Active optical cable that transmits HDMI 2
+  BG-CAB-SDI10                      HDMI+SDI  1080p60  | 75-ohm shielded SDI cable designed for transmitting 1080p HD video signals up to 100 meter…
+  BG-CAB-SDI100                     HDMI+SDI  1080p60  | 75-ohm shielded SDI cable designed for transmitting 1080p HD video signals up to 100 meter…  [MULTI: includes-ndi+ includes-streaming]
+  BG-CAB-SDI15                      HDMI+SDI  1080p60  | 75-ohm shielded SDI cable designed to transmit 1080p HD video signals up to 100 meters, fe…
+  BG-CAB-SDI150                     HDMI+SDI  1080p60  | 75-ohm shielded SDI cable designed to transmit 1080p HD video signals up to 100 meters usi…
+  BG-CAB-SDI25                      HDMI+SDI  1080p60  | 75-ohm shielded SDI cable designed to transmit 1080p HD video signals up to 100 meters, fe…  [MULTI: includes-recording+ production-switcher]
+  BG-CAB-SDI250                     HDMI+SDI  1080p60  | 75-ohm shielded SDI cable designed to transmit 1080p HD video signals up to 100 meters usi…  [MULTI: includes-recording+ switcher+videowall]
+  BG-CAB-SDI328                     HDMI+SDI  1080p60  | 75-ohm shielded SDI cable designed to transmit 1080p HD video signals up to 100 meters wit…
+  BG-CAB-SDI50                      HDMI+SDI  1080p60  | 75-ohm shielded SDI cable that transmits 1080p HD video signals up to 100 meters, utilizin…
+  BG-CAB-SDI6                       HDMI+SDI  1080p60  | 75-ohm shielded SDI cable designed to transmit 1080p HD video signals up to 100 meters wit…
+  BG-CAB-SDI75                      HDMI+SDI  1080p60  | 75-ohm shielded SDI cable that transmits 1080p video signals up to 100 meters with BNC con…
+  BG-CAB-SDIS100                    HDMI+SDI  1080p60  | Premade shielded SDI cable with a 75-ohm impedance that supports 1080p video signals up to…  [MULTI: includes-ndi+ includes-recording]
+  BG-CAB-SDIS150                    HDMI+SDI  1080p60  | Premade shielded SDI cable with a 75-ohm impedance that supports 1080p video signals up to…
+  BG-CAB-SDIS200                    HDMI+SDI  1080p60  | Premade shielded SDI cable designed for transmitting 1080p HD video signals up to 100 mete…
+  BG-CAB-SDIS25                     HDMI+SDI  1080p60  | Premade shielded 75-ohm SDI cable with integrated DC Siamese cable that transmits 1080p HD…  [MULTI: includes-ndi+ switcher+videowall]
+  BG-CAB-SDIS250                    HDMI+SDI  1080p60  | Premade shielded SDI cable with a 75-ohm impedance that transmits 1080p video signals up t…
+  BG-CAB-SDIS328                    HDMI+SDI  1080p60  | Premade shielded SDI cable with a 75-ohm impedance that transmits 1080p video signals up t…
+  BG-CAB-SDIS50                     HDMI+SDI  1080p60  | This 75-ohm premade shielded SDI cable transmits 1080p video signals up to 100 meters whil…
+  BG-CAB-SDIS75                     HDMI+SDI  1080p60  | 75-ohm premade shielded SDI cable with integrated DC Siamese wire, capable of transmitting…
+  BG-CAB-U3A10                      Fiber  | USB 3
+  BG-CAB-U3A15                      Fiber  | USB 3  [MULTI: includes-ndi+ includes-recording]
+  BG-CAB-U3A20                      Fiber  | USB 3
+  BG-CAB-U3A30                      Fiber  | USB 3
+  BG-CAB-U3A40                      Fiber  | USB 3  [MULTI: includes-recording+ includes-streaming]
+  BG-CAB-U3A50                      Fiber  | USB 3
+
+## Accessories & Mounts
+# 13 products
+  BG-IPGEAR-PRO-ACC-RB              | Blank mounting bracket designed to secure BG-IPGEAR-PRO-ACC-RM10 rack shelf in place withi…
+  BG-IPGEAR-PRO-ACC-RM              | Mounting bracket designed to securely attach the BG-IPGEAR-PRO-ACC-RM10 rack shelf to BG-I…
+  BG-IPGEAR-PRO-ACC-RM10            | 4RU rackmount designed to securely hold up to 10 BG-IPGEAR-PRO-T/R devices, providing a st…
+  BG-IPGEAR-ULTRA-ACC-RM            | Rack ears designed to securely mount the BG-IPGEAR-ULTRA-ACC-RM10 rack bracket for the BG-…
+  BG-IPGEAR-ULTRA-ACC-RM10          | 6RU 19-inch rack bracket designed to securely mount up to 10 BG-IPGEAR-ULTRA transceivers …
+  BG-IPGEAR-ULTRA-ACC-RM2           | 1RU 19" rack bracket designed to securely mount two BG-IPGEAR-ULTRA transceivers in a stan…
+  BG-IPGEAR-ULTRA-ACC-RMB           | Blank vertical mounting bracket designed to securely attach the BG-IPGEAR-ULTRA-ACC-RM10 r…
+  BG-VOP-ACC-RB                     | Blank mounting bracket designed to securely attach the BG-VOP-ACC-RM10 rack shelf to BG-VO…
+  BG-VOP-ACC-RM                     | Mounting bracket designed to securely attach the BG-VOP-ACC-RM10 rack shelf to BG-VOP-MT m…
+  BG-VOP-ACC-RM10                   | 4RU rack mount designed to hold up to 10 BG-VOP-MT transceivers, providing a secure and or…
+  BG-VPTZ-CM                        | Metal ceiling mount bracket designed specifically for BZBGEAR VPTZ series cameras, providi…  [MULTI: includes-recording+ includes-streaming]
+  BG-VPTZ-TPM                       | Tripod mount adapter designed for BG-VPTZ cameras, allowing secure attachment to standard …
+  BG-VPTZ-WM                        | Metal wall mount bracket designed specifically for BZBGEAR VPTZ series cameras, allowing s…
+
+## Complete System Bundles
+# 4 products
+  BG-STUDIO-ELITE-B                 12G-SDI+HDMI  4K60  | Premium 3-camera production bundle featuring AI auto-tracking PTZ cameras capable of outpu…  [MULTI: includes-recording+ includes-streaming+ includes-tally]
+  BG-STUDIO-ELITE-N-B               12G-SDI+HDMI+NDI  4K60  | Premium 3-camera production bundle featuring AI auto-tracking PTZ cameras capable of outpu…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-STUDIO-ELITE-N-W               12G-SDI+HDMI+NDI  4K60  | Premium 3-camera production bundle featuring AI auto-tracking PTZ cameras that support res…  [MULTI: includes-ndi+ includes-recording+ includes-streaming]
+  BG-STUDIO-ELITE-W                 12G-SDI+HDMI  4K60  | This premium production bundle includes three AI auto-tracking PTZ cameras capable of outp…  [MULTI: includes-recording+ includes-streaming+ production-switcher]

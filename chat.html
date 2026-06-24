@@ -1,0 +1,1493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BZB Gear AI Advisor</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:         #F9F9FB;
+    --surface:    #FFFFFF;
+    --surface-2:  #F4F4F6;
+    --border:     #E4E4E7;
+    --border-l:   #F1F1F3;
+    --text:       #18181B;
+    --text-2:     #52525B;
+    --text-3:     #A1A1AA;
+    --blue:       #2563EB;
+    --blue-l:     #3B82F6;
+    --blue-dim:   #EFF6FF;
+    --blue-b:     #BFDBFE;
+    --green:      #15803D;
+    --green-l:    #22C55E;
+    --green-dim:  #F0FDF4;
+    --green-b:    #86EFAC;
+    --amber:      #B45309;
+    --amber-l:    #D97706;
+    --amber-dim:  #FFFBEB;
+    --amber-b:    #FDE68A;
+    --sh-sm:      0 1px 3px rgba(0,0,0,0.07),0 1px 2px rgba(0,0,0,0.04);
+    --sh-md:      0 4px 16px rgba(0,0,0,0.08),0 2px 4px rgba(0,0,0,0.04);
+    --sh-lg:      0 8px 32px rgba(0,0,0,0.10),0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Header ── */
+  header {
+    width: 100%;
+    max-width: 900px;
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .bzb-logo { height: 28px; width: auto; display: block; flex-shrink: 0; }
+  .header-badge {
+    font-size: 9px; font-weight: 600; color: var(--text-3);
+    background: var(--surface-2); border: 1px solid var(--border);
+    padding: 2px 7px; border-radius: 4px;
+    letter-spacing: 0.7px; text-transform: uppercase; flex-shrink: 0;
+  }
+  #new-chat {
+    margin-left: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, color .15s;
+    font-family: inherit;
+  }
+  #new-chat:hover { background: var(--surface-2); border-color: #D4D4D8; color: var(--text); }
+
+  /* ── Session ID badge ── */
+  #session-badge {
+    display: none; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--text-3); margin-left: 8px;
+  }
+  #session-badge .sid-label { color: var(--text-3); }
+  #session-badge .sid-val {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 10.5px; color: var(--text-2);
+    max-width: 90px; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+  }
+  #session-badge .sid-copy {
+    background: none; border: none;
+    cursor: pointer; padding: 2px 5px;
+    border-radius: 4px; font-size: 11px; color: var(--text-3);
+    transition: background .15s, color .15s;
+  }
+  #session-badge .sid-copy:hover { background: var(--surface-2); color: var(--blue); }
+  #session-badge .sid-copy.copied { color: var(--green); }
+
+  /* ── Chat area ── */
+  #chat {
+    flex: 1;
+    width: 100%;
+    max-width: 900px;
+    overflow-y: auto;
+    padding: 28px 24px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  /* ── Messages ── */
+  .msg { display: flex; gap: 10px; max-width: 100%; animation: msgIn .22s ease both; }
+  .msg.user { flex-direction: row-reverse; }
+  @keyframes msgIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0; margin-top: 2px;
+  }
+  .msg.bot .avatar  { background: var(--blue-dim); color: var(--blue); border: 1px solid var(--blue-b); }
+  .msg.user .avatar { background: #DCFCE7; color: var(--green); border: 1px solid var(--green-b); }
+
+  .bubble {
+    max-width: 78%;
+    padding: 11px 16px;
+    border-radius: 14px;
+    font-size: 13.5px;
+    line-height: 1.65;
+    white-space: pre-wrap;
+  }
+  .msg.bot  .bubble { background: var(--surface); border: 1px solid var(--border); border-top-left-radius: 4px; color: var(--text); box-shadow: var(--sh-sm); }
+  .msg.user .bubble { background: var(--blue); border: 1px solid #1D4ED8; border-top-right-radius: 4px; color: #fff; }
+
+  /* Markdown in bubbles */
+  .bubble strong { color: #1D4ED8; }
+  .msg.user .bubble strong { color: #BFDBFE; }
+  .bubble em     { color: var(--text-3); font-style: normal; font-size: 12px; }
+  .bubble h2     { font-size: 13px; font-weight: 600; color: #1D4ED8; margin: 10px 0 4px; }
+  .bubble ul     { padding-left: 18px; }
+  .bubble li     { margin: 3px 0; }
+  .bubble code   { background: var(--surface-2); padding: 1px 6px; border-radius: 4px; font-size: 11.5px; color: #0369A1; font-family: 'SF Mono','Fira Code',monospace; border: 1px solid var(--border); }
+
+  /* ── Chips ── */
+  #chips {
+    width: 100%;
+    max-width: 900px;
+    padding: 10px 24px 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+  .chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--blue);
+    padding: 6px 15px;
+    border-radius: 100px;
+    font-size: 12.5px; font-weight: 500;
+    cursor: pointer;
+    transition: background .15s, border-color .2s, color .15s, box-shadow .15s, transform .12s;
+    user-select: none;
+    font-family: inherit;
+    animation: chipIn .2s ease both;
+    box-shadow: var(--sh-sm);
+  }
+  @keyframes chipIn {
+    from { opacity: 0; transform: scale(.93) translateY(4px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .chip:hover { background: var(--blue-dim); border-color: var(--blue-b); box-shadow: var(--sh-md); transform: translateY(-1px); }
+  .chip:active { transform: translateY(0) scale(.98); }
+
+  /* ── Product cards grid ── */
+  .product-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+    gap: 10px;
+    margin-top: 6px;
+    width: 100%;
+  }
+  .partial-section {
+    margin-top: 18px;
+    width: 100%;
+  }
+  .partial-label {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 14px;
+    background: var(--amber-dim);
+    border: 1px solid var(--amber-b);
+    border-radius: 8px 8px 0 0;
+    font-size: 11.5px; font-weight: 600; color: var(--amber);
+    letter-spacing: 0.1px;
+  }
+  .partial-label svg { flex-shrink: 0; stroke: var(--amber); }
+  .partial-section .product-cards {
+    border: 1px solid var(--amber-b);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    padding: 10px;
+    background: #FFFDF5;
+    margin-top: 0;
+  }
+  .product-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: box-shadow .2s, border-color .2s, transform .2s;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    animation: cardIn .35s cubic-bezier(.22,.68,0,1.15) both;
+    box-shadow: var(--sh-sm);
+  }
+  .product-card.partial-card { border-color: var(--amber-b); }
+  .product-card:hover {
+    border-color: var(--blue-b);
+    box-shadow: var(--sh-lg);
+    transform: translateY(-2px);
+  }
+  .product-card.partial-card:hover {
+    border-color: var(--amber-b);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 0 0 1px var(--amber-b);
+  }
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(14px) scale(.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .product-card-img {
+    width: 100%; aspect-ratio: 4/3; object-fit: contain;
+    background: #F8FAFC; padding: 12px;
+    border-bottom: 1px solid var(--border-l);
+    transition: background .2s;
+  }
+  .product-card:hover .product-card-img { background: #F1F5F9; }
+  .product-card-img-placeholder {
+    width: 100%; aspect-ratio: 4/3;
+    background: #F8FAFC;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; border-bottom: 1px solid var(--border-l);
+    color: var(--text-3);
+  }
+  .product-card-body {
+    padding: 10px 12px 12px;
+    flex: 1; display: flex; flex-direction: column; gap: 5px;
+  }
+  .product-card-sku {
+    font-size: 10.5px; font-weight: 700; color: var(--blue);
+    background: var(--blue-dim);
+    border: 1px solid var(--blue-b);
+    border-radius: 3px; padding: 2px 7px;
+    align-self: flex-start;
+    font-family: inherit;
+    letter-spacing: 0.2px;
+  }
+  .product-card.partial-card .product-card-sku {
+    color: var(--amber);
+    background: var(--amber-dim);
+    border-color: var(--amber-b);
+  }
+  .product-card-name {
+    font-size: 11.5px; color: var(--text-2); line-height: 1.4;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; text-wrap: pretty;
+    transition: color .15s;
+  }
+  .product-card:hover .product-card-name { color: var(--text); }
+  .product-card-price {
+    font-size: 13px; font-weight: 600; color: var(--green);
+    margin-top: auto; letter-spacing: -0.3px;
+  }
+  .product-card-stock { font-size: 10px; color: var(--text-3); }
+
+  /* ── Analyzing indicator ── */
+  .analyzing-bar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 16px;
+    background: var(--blue-dim);
+    border: 1px solid var(--blue-b);
+    border-radius: 10px;
+    margin-top: 10px;
+    font-size: 12.5px; color: var(--blue);
+    width: 100%;
+  }
+  .analyzing-bar .spin {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 1.5px solid var(--blue-b);
+    border-top-color: var(--blue);
+    animation: spin .7s linear infinite; flex-shrink: 0;
+  }
+
+  /* ── Recommendation block ── */
+  .rec-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    margin-top: 6px;
+    width: 100%;
+    box-shadow: var(--sh-sm);
+  }
+  .rec-block h3 {
+    font-size: 10px; color: var(--text-3); margin-bottom: 12px;
+    letter-spacing: 1px; text-transform: uppercase; font-weight: 600;
+  }
+  .rec-main-text {
+    font-size: 13px; line-height: 1.8; white-space: pre-wrap;
+    color: var(--text-2); margin-bottom: 10px;
+  }
+
+  /* ── Best pick highlight ── */
+  .best-pick-block {
+    margin-top: 16px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--green-b);
+  }
+  .best-pick-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px;
+    background: var(--green-dim);
+    font-size: 10.5px; font-weight: 700; color: var(--green);
+    letter-spacing: 0.9px; text-transform: uppercase;
+  }
+  .best-pick-body {
+    padding: 14px 16px;
+    background: #F8FFF9;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .best-pick-img {
+    width: 100%; max-height: 160px; object-fit: contain;
+    background: #F0FAF2; border-radius: 8px; padding: 12px;
+    border: 1px solid var(--green-b);
+  }
+  .best-pick-sku {
+    font-size: 13px; font-weight: 700; color: var(--green);
+    background: var(--green-dim);
+    border: 1px solid var(--green-b);
+    border-radius: 5px; padding: 4px 12px;
+    align-self: flex-start; text-decoration: none;
+    font-family: inherit;
+    letter-spacing: 0.2px;
+    transition: background .15s;
+  }
+  .best-pick-sku:hover { background: #DCFCE7; }
+  .best-pick-reason { font-size: 13px; color: var(--text); line-height: 1.65; }
+
+  /* ── You might also need ── */
+  .might-need-block {
+    margin-top: 12px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--blue-b);
+  }
+  .might-need-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 14px;
+    background: var(--blue-dim);
+    font-size: 10.5px; font-weight: 700; color: var(--blue);
+    letter-spacing: 0.9px; text-transform: uppercase;
+  }
+  .might-need-body {
+    padding: 12px 16px;
+    background: #F5F8FF;
+    font-size: 12.5px; color: var(--text-2); line-height: 1.75;
+    white-space: pre-wrap;
+  }
+  .might-need-body ul, .might-need-body li { margin: 0; padding-left: 18px; }
+
+  /* ── Equipment selection list ── */
+  .equip-list {
+    margin-top: 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: var(--sh-sm);
+  }
+  .equip-list-header {
+    padding: 8px 14px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    font-size: 10px; font-weight: 600; color: var(--text-3);
+    letter-spacing: 1px; text-transform: uppercase;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .equip-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-l);
+    background: var(--surface);
+    transition: background .12s;
+  }
+  .equip-row:last-child { border-bottom: none; }
+  .equip-row:hover { background: var(--blue-dim); }
+  .equip-row.unchecked { opacity: 0.38; }
+  .equip-check { width: 16px; height: 16px; accent-color: var(--blue); cursor: pointer; flex-shrink: 0; }
+  .equip-sku {
+    font-size: 11px; font-weight: 700; color: var(--blue);
+    background: var(--blue-dim); border: 1px solid var(--blue-b);
+    border-radius: 4px; padding: 2px 8px;
+    white-space: nowrap; flex-shrink: 0;
+    font-family: inherit;
+    letter-spacing: 0.2px;
+  }
+  .equip-name { font-size: 12.5px; color: var(--text-2); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .equip-cat { font-size: 10px; color: var(--text-3); flex-shrink: 0; display: none; }
+  @media (min-width: 600px) { .equip-cat { display: block; } }
+  .qty-ctrl { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .qty-btn {
+    width: 24px; height: 24px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--text-2); font-size: 14px; line-height: 1;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: background .12s, border-color .12s, color .12s; flex-shrink: 0;
+  }
+  .qty-btn:hover { background: var(--blue-dim); border-color: var(--blue-b); color: var(--blue); }
+  .qty-val { min-width: 22px; text-align: center; font-size: 13px; font-weight: 600; color: var(--text); }
+
+  /* ── Dual approach blocks ── */
+  .approaches-wrapper { display: flex; flex-direction: column; gap: 14px; margin-top: 4px; width: 100%; }
+  .approach-block { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface); box-shadow: var(--sh-sm); }
+  .approach-header {
+    padding: 12px 16px; background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .approach-badge {
+    background: var(--blue); color: #fff;
+    font-size: 10px; font-weight: 700;
+    padding: 3px 8px; border-radius: 5px; flex-shrink: 0;
+    letter-spacing: 0.3px;
+  }
+  .approach-header h3 { font-size: 13.5px; font-weight: 600; color: var(--text); flex: 1; }
+  .approach-body { padding: 14px 16px 0; }
+  .approach-meta { font-size: 12.5px; line-height: 1.65; color: var(--text-2); white-space: pre-wrap; margin-bottom: 10px; }
+  .approach-meta strong { color: #1D4ED8; }
+  .approach-meta em { font-style: normal; color: var(--text-3); font-size: 12px; }
+
+  /* ── Diagram ── */
+  .diagram-btn {
+    margin-top: 14px; display: inline-flex; align-items: center; gap: 7px;
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2);
+    padding: 7px 14px; border-radius: 8px; font-size: 12px;
+    cursor: pointer; transition: all .15s; font-family: inherit;
+  }
+  .diagram-btn:hover { background: var(--blue-dim); border-color: var(--blue-b); color: var(--blue); }
+  .diagram-btn svg { width: 14px; height: 14px; stroke: currentColor; }
+  .diagram-btn.active { color: var(--blue); border-color: var(--blue-b); background: var(--blue-dim); }
+  .diagram-container { margin-top: 14px; border: 1px solid var(--border); border-radius: 10px; overflow-x: auto; overflow-y: hidden; background: var(--surface); }
+  .diagram-loading { padding: 24px; text-align: center; color: var(--text-3); font-size: 12.5px; }
+  .diagram-loading::after {
+    content: ''; display: inline-block;
+    width: 14px; height: 14px;
+    border: 1.5px solid var(--border); border-top-color: var(--blue);
+    border-radius: 50%; animation: spin .8s linear infinite;
+    margin-left: 10px; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Input bar ── */
+  #input-area {
+    width: 100%; max-width: 900px;
+    padding: 12px 24px 22px;
+    display: flex; gap: 10px; align-items: flex-end;
+  }
+  #input {
+    flex: 1;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    color: var(--text);
+    font-size: 14px;
+    padding: 13px 18px;
+    resize: none; outline: none;
+    min-height: 50px; max-height: 160px;
+    transition: border-color .2s, box-shadow .25s;
+    font-family: inherit;
+    line-height: 1.55;
+    box-shadow: var(--sh-sm);
+  }
+  #input:focus {
+    border-color: var(--blue-l);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.14), var(--sh-md);
+  }
+  #input::placeholder { color: var(--text-3); }
+
+  #send {
+    background: var(--blue);
+    border: none; border-radius: 12px;
+    color: #fff; width: 50px; height: 50px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: background .15s, box-shadow .2s, transform .12s;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.30);
+  }
+  #send:hover { background: #1D4ED8; box-shadow: 0 4px 16px rgba(37,99,235,0.45); transform: scale(1.05); }
+  #send:active { transform: scale(.96); }
+  #send:disabled { background: var(--border); box-shadow: none; transform: none; cursor: default; color: var(--text-3); }
+  #send svg { width: 18px; height: 18px; }
+
+  /* ── Typing indicator ── */
+  .typing { display: flex; gap: 5px; align-items: center; padding: 8px 2px; }
+  .typing span {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--blue-l); opacity: 0.6;
+    animation: bounce .9s infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: .15s; }
+  .typing span:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+  /* ── Scrollbar ── */
+  #chat::-webkit-scrollbar { width: 4px; }
+  #chat::-webkit-scrollbar-track { background: transparent; }
+  #chat::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  #chat::-webkit-scrollbar-thumb:hover { background: #D4D4D8; }
+
+  /* ── SKU links in analysis text ── */
+  .sku-link {
+    color: var(--blue);
+    text-decoration: none;
+    font-weight: 700;
+    font-family: inherit;
+  }
+  .sku-link:hover { text-decoration: underline; }
+
+  /* ── Selection ── */
+  ::selection { background: rgba(37,99,235,0.15); }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="https://bzbgear.com/wp-content/themes/bzbgear/img/logo.svg" class="bzb-logo" alt="BZB Gear">
+  <span class="header-badge">beta</span>
+  <div id="session-badge">
+    <span class="sid-label">session</span>
+    <span class="sid-val" id="sid-val"></span>
+    <button class="sid-copy" id="sid-copy" title="Copy session ID">⎘</button>
+  </div>
+  <button id="new-chat" onclick="resetChat()">+ New chat</button>
+</header>
+
+<div id="chat"></div>
+<div id="chips"></div>
+
+<div id="input-area">
+  <textarea id="input" placeholder="Describe what you need to set up..." rows="1"></textarea>
+  <button id="send" onclick="sendMessage()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+    </svg>
+  </button>
+</div>
+
+<script>
+const API = 'http://127.0.0.1:8000';
+let sessionId = null;
+let lastRecommendationText = null;
+
+// ─── Language detection & UI strings ──────────────────────────────────────
+const CYRILLIC = /[а-яёА-ЯЁ]/;
+
+function detectLang() {
+  const chat = document.getElementById('chat');
+  return CYRILLIC.test(chat.innerText) ? 'ru' : 'en';
+}
+
+const UI = {
+  en: {
+    analyzing:    'Analyzing and selecting products…',
+    reading:      'Reading specs and writing recommendation…',
+    found_one:    n => `**${n}** product found so far:`,
+    found_many:   n => `**${n}** products found so far:`,
+    found_final:  n => `**${n}** matching products:`,
+    analysis:     'Analysis',
+    error_rec:    'Error loading recommendation. Please try again.',
+    timed_out:    'Recommendation timed out. Please try again.',
+    diagram_btn:  'Show connection diagram',
+  },
+  ru: {
+    analyzing:    'Analyzing and selecting equipment…',
+    reading:      'Reading specs, building recommendation…',
+    found_one:    n => `Found **${n}** product:`,
+    found_many:   n => `Found **${n}** products:`,
+    found_final:  n => `**${n}** matching products:`,
+    analysis:     'Analysis',
+    error_rec:    'Failed to load recommendation. Please try again.',
+    timed_out:    'Recommendation timed out. Please try again.',
+    diagram_btn:  'Show connection diagram',
+  },
+};
+
+function t(key, ...args) {
+  const lang = detectLang();
+  const s = UI[lang]?.[key] ?? UI.en[key];
+  return typeof s === 'function' ? s(...args) : s;
+}
+
+// ─── Mermaid init ──────────────────────────────────────────────────────────
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  themeVariables: {
+    background:          '#FFFFFF',
+    primaryColor:        '#EFF6FF',
+    primaryBorderColor:  '#BFDBFE',
+    primaryTextColor:    '#18181B',
+    secondaryColor:      '#F4F4F6',
+    tertiaryColor:       '#F9F9FB',
+    lineColor:           '#A1A1AA',
+    fontSize:            '13px',
+    nodeBorder:          '#BFDBFE',
+    clusterBkg:          '#F4F4F6',
+    edgeLabelBackground: '#FFFFFF',
+  },
+  flowchart: { curve: 'basis', padding: 20, nodeSpacing: 50, rankSpacing: 80 },
+  securityLevel: 'loose',
+});
+
+// ─── Cable color map ───────────────────────────────────────────────────────
+const CABLE_COLOR = {
+  HDMI: '#a855f7', SDI: '#f97316', NDI: '#22c55e',
+  Ethernet: '#22c55e', CAT: '#22c55e', USB: '#3b82f6',
+  Fiber: '#06b6d4', HDBaseT: '#14b8a6', Audio: '#f59e0b', Power: '#6b7280',
+};
+
+// Node type → mermaid CSS class (controls border color)
+const TYPE_CLASS = {
+  camera:     'nodeCamera',
+  source:     'nodeCamera',
+  pc:         'nodePC',
+  audio:      'nodeAudio',
+  audio_source: 'nodeAudio',
+  controller: 'nodeCtrl',
+  network:    'nodeNet',
+  switcher:   'nodeSW',
+  matrix:     'nodeSW',
+  encoder:    'nodeEnc',
+  extender:   'nodeExt',
+  splitter:   'nodeExt',
+  display:    'nodeDisp',
+  streaming:  'nodeStream',
+  recorder:   'nodeRec',
+  other:      'nodeOther',
+};
+
+// ─── Convert JSON → mermaid flowchart syntax ───────────────────────────────
+function jsonToMermaid(data) {
+  const { nodes = [], connections = [] } = data;
+  if (!nodes.length) return null;
+
+  const lines = ['flowchart LR'];
+
+  // Class style definitions
+  lines.push('  classDef nodeCamera  fill:#0f1e3a,stroke:#6b8cff,color:#c5d5f5');
+  lines.push('  classDef nodePC      fill:#0f1e3a,stroke:#6b8cff,color:#c5d5f5');
+  lines.push('  classDef nodeAudio   fill:#1a1408,stroke:#f59e0b,color:#fde68a');
+  lines.push('  classDef nodeCtrl    fill:#0f1929,stroke:#3b82f6,color:#93c5fd');
+  lines.push('  classDef nodeNet     fill:#0a1f0a,stroke:#22c55e,color:#86efac');
+  lines.push('  classDef nodeSW      fill:#1a0f2e,stroke:#a855f7,color:#d8b4fe');
+  lines.push('  classDef nodeEnc     fill:#1f0f00,stroke:#f97316,color:#fdba74');
+  lines.push('  classDef nodeExt     fill:#0a1a1a,stroke:#14b8a6,color:#5eead4');
+  lines.push('  classDef nodeDisp    fill:#0a1a0a,stroke:#4ade80,color:#86efac');
+  lines.push('  classDef nodeStream  fill:#001a1a,stroke:#06b6d4,color:#67e8f9');
+  lines.push('  classDef nodeRec     fill:#1a0a1a,stroke:#c084fc,color:#e9d5ff');
+  lines.push('  classDef nodeOther   fill:#111827,stroke:#4a5580,color:#9ca3af');
+
+  // Safe node ID (mermaid IDs can't have hyphens in some versions)
+  const safeId = id => 'n_' + String(id).replace(/[^a-zA-Z0-9]/g, '_');
+
+  // Node definitions
+  for (const n of nodes) {
+    const id  = safeId(n.id);
+    const sku = n.sku || '';
+    const qty = n.quantity > 1 ? ` ×${Math.min(n.quantity, 999)}` : '';
+    // Mermaid label uses <br/> for line breaks inside quotes
+    const label = sku
+      ? `"${sku}<br/>${n.label}${qty}"`
+      : `"${n.label}${qty}"`;
+    const cls = TYPE_CLASS[n.type] || 'nodeOther';
+    lines.push(`  ${id}[${label}]:::${cls}`);
+  }
+
+  // Connections — deduplicate same signal between same pair
+  const seen = new Set();
+  const linkStyles = [];
+
+  connections.forEach((conn, i) => {
+    const from = safeId(conn.from);
+    const to   = safeId(conn.to);
+    const key  = `${from}→${to}:${conn.signal}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+
+    const lbl   = conn.cable || conn.signal || '';
+    const color = CABLE_COLOR[conn.signal] || '#6b7280';
+
+    lines.push(`  ${from} -->|"${lbl}"| ${to}`);
+    linkStyles.push({ idx: linkStyles.length, color });
+  });
+
+  // Apply per-edge colors
+  for (const { idx, color } of linkStyles) {
+    lines.push(`  linkStyle ${idx} stroke:${color},stroke-width:2.5px`);
+  }
+
+  return lines.join('\n');
+}
+
+// ─── Render mermaid into container ────────────────────────────────────────
+let _mermaidCounter = 0;
+
+async function renderMermaid(mermaidCode, container) {
+  const id = 'mermaid-' + (++_mermaidCounter);
+  try {
+    const { svg } = await mermaid.render(id, mermaidCode);
+    container.innerHTML = svg;
+    // Style the SVG to fill container and respect dark bg
+    const svgEl = container.querySelector('svg');
+    if (svgEl) {
+      svgEl.style.cssText = 'width:100%;height:auto;display:block;min-width:400px;background:#0a0f1e;border-radius:10px;padding:12px';
+      svgEl.removeAttribute('height');
+    }
+  } catch (e) {
+    container.innerHTML = `<div style="padding:16px;color:#f87171;font-size:12px">Diagram render error: ${e.message}</div>`;
+  }
+}
+
+// ─── Load diagram from API ─────────────────────────────────────────────────
+async function loadDiagram(recText, container) {
+  container.innerHTML = '<div class="diagram-loading">Generating connection diagram</div>';
+  try {
+    const res = await fetch(`${API}/diagram`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recommendation: recText }),
+    });
+    const data = await res.json();
+
+    if (!data.nodes || !data.nodes.length) {
+      container.innerHTML = '<div style="padding:16px;color:#555;font-size:13px">Could not extract diagram from recommendation.</div>';
+      return;
+    }
+
+    const mermaidCode = jsonToMermaid(data);
+    if (!mermaidCode) {
+      container.innerHTML = '<div style="padding:16px;color:#555;font-size:13px">No devices to diagram.</div>';
+      return;
+    }
+
+    await renderMermaid(mermaidCode, container);
+  } catch(e) {
+    container.innerHTML = `<div style="padding:16px;color:#f87171;font-size:12px">Error: ${e.message}</div>`;
+  }
+}
+
+// ─── Render markdown-ish text ──────────────────────────────────────────────
+// SKU -> product data map, built from SSE product events
+const skuUrlMap = {};
+const skuImgMap = {};
+
+function renderText(text) {
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/^#{1,3} /gm, '');
+  return escaped
+    .replace(/\n/g, '<br>')
+    .replace(/\b(B[GZ]-[\w-]+)\b/gi, (match) => {
+      const url = skuUrlMap[match.toUpperCase()];
+      return url
+        ? `<a href="${url}" target="_blank" rel="noopener noreferrer" class="sku-link">${match}</a>`
+        : `<strong>${match}</strong>`;
+    });
+}
+
+// ─── Parse and render final recommendation text ───────────────────────────
+function renderFinalRec(text) {
+  // Split off "You might also need:" section
+  const mightRe = /\n*(You might also need:|Возможно,?\s*вам\s*(также\s*)?понадобится:?)/i;
+  const mightMatch = text.search(mightRe);
+  let mainText = text;
+  let mightText = '';
+  if (mightMatch !== -1) {
+    mainText  = text.slice(0, mightMatch).trimEnd();
+    mightText = text.slice(mightMatch).replace(mightRe, '').trim();
+  }
+
+  // Extract "Best pick for your case:" line
+  const bestRe = /(?:^|\n)\s*(?:\*\*)?Best pick for your case:?(?:\*\*)?\s*(.+)/im;
+  const bestMatch = mainText.match(bestRe);
+  let mainBody = mainText;
+  let bestLine = '';
+  if (bestMatch) {
+    const idx = mainText.indexOf(bestMatch[0]);
+    mainBody  = mainText.slice(0, idx).trimEnd();
+    bestLine  = bestMatch[1].trim().replace(/\*\*/g, '');
+  }
+
+  let html = '';
+  if (mainBody.trim()) {
+    html += `<div class="rec-main-text">${renderText(mainBody)}</div>`;
+  }
+
+  if (bestLine) {
+    const skuRe = /^((?:BG|BZ)-[\w-]+)\s*[-:]\s*(.*)/i;
+    const sm = bestLine.match(skuRe);
+    const starIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="#15803d" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+    if (sm) {
+      const sku    = sm[1].toUpperCase();
+      const reason = sm[2].trim();
+      const url    = skuUrlMap[sku] || '#';
+      const img    = skuImgMap[sku];
+      const imgHtml = img
+        ? `<img src="${img}" class="best-pick-img" alt="${sku}">`
+        : '';
+      html += `
+        <div class="best-pick-block">
+          <div class="best-pick-header">${starIcon} Best Pick for Your Case</div>
+          <div class="best-pick-body">
+            ${imgHtml}
+            <a href="${url}" target="_blank" rel="noopener" class="best-pick-sku">${sku}</a>
+            <div class="best-pick-reason">${renderText(reason)}</div>
+          </div>
+        </div>`;
+    } else {
+      html += `
+        <div class="best-pick-block">
+          <div class="best-pick-header">${starIcon} Best Pick for Your Case</div>
+          <div class="best-pick-body"><div class="best-pick-reason">${renderText(bestLine)}</div></div>
+        </div>`;
+    }
+  }
+
+  if (mightText) {
+    const noteIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+    html += `
+      <div class="might-need-block">
+        <div class="might-need-header">${noteIcon} You Might Also Need</div>
+        <div class="might-need-body">${renderText(mightText)}</div>
+      </div>`;
+  }
+
+  return html || `<div class="rec-main-text">${renderText(text)}</div>`;
+}
+
+// ─── Add message bubble ────────────────────────────────────────────────────
+function addMessage(text, role = 'bot') {
+  const chat = document.getElementById('chat');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  div.innerHTML = `
+    <div class="avatar">${role === 'bot' ? '🤖' : '👤'}</div>
+    <div class="bubble">${renderText(text)}</div>`;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+// ─── Typing indicator ──────────────────────────────────────────────────────
+function showTyping() {
+  const chat = document.getElementById('chat');
+  const div = document.createElement('div');
+  div.className = 'msg bot'; div.id = 'typing';
+  div.innerHTML = `<div class="avatar">🤖</div>
+    <div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+function hideTyping() {
+  const el = document.getElementById('typing');
+  if (el) el.remove();
+}
+
+// ─── Build product cards (shown immediately while LLM thinks) ─────────────
+function buildProductCards(candidates) {
+  const grid = document.createElement('div');
+  grid.className = 'product-cards';
+
+  candidates.forEach((p, i) => {
+    const card = document.createElement('a');
+    card.className = 'product-card';
+    card.href = p.product_url || '#';
+    card.target = '_blank';
+    card.rel = 'noopener noreferrer';
+    card.style.animationDelay = (i * 60) + 'ms';
+
+    if (p.image_url) {
+      const img = document.createElement('img');
+      img.className = 'product-card-img';
+      img.src = p.image_url;
+      img.alt = p.id;
+      img.loading = 'lazy';
+      img.onerror = () => { img.replaceWith(makePlaceholder()); };
+      card.appendChild(img);
+    } else {
+      card.appendChild(makePlaceholder());
+    }
+
+    const body = document.createElement('div');
+    body.className = 'product-card-body';
+
+    const sku = document.createElement('span');
+    sku.className = 'product-card-sku';
+    sku.textContent = p.id;
+
+    const name = document.createElement('div');
+    name.className = 'product-card-name';
+    name.textContent = p.name || p.id;
+
+    body.appendChild(sku);
+    body.appendChild(name);
+
+    if (p.price_usd) {
+      const price = document.createElement('div');
+      price.className = 'product-card-price';
+      price.textContent = '$' + p.price_usd.toLocaleString();
+      body.appendChild(price);
+    }
+    if (p.stock_status) {
+      const stock = document.createElement('div');
+      stock.className = 'product-card-stock';
+      stock.textContent = p.stock_status;
+      body.appendChild(stock);
+    }
+
+    card.appendChild(body);
+    grid.appendChild(card);
+  });
+  return grid;
+}
+
+function makePlaceholder() {
+  const d = document.createElement('div');
+  d.className = 'product-card-img-placeholder';
+  d.textContent = '📦';
+  return d;
+}
+
+// ─── Build equipment list DOM element ──────────────────────────────────────
+function buildEquipList(candidates, recText) {
+  const list = document.createElement('div');
+  list.className = 'equip-list';
+
+  const header = document.createElement('div');
+  header.className = 'equip-list-header';
+  header.innerHTML = `<span style="flex:1">Product</span><span>Qty</span>`;
+  list.appendChild(header);
+
+  candidates.forEach(p => {
+    const qty = extractQty(recText, p.id);
+    const row = document.createElement('div');
+    row.className = 'equip-row';
+    row.innerHTML = `
+      <input type="checkbox" class="equip-check" checked>
+      <span class="equip-sku">${p.id}</span>
+      <span class="equip-name" title="${(p.name||'').replace(/"/g,'&quot;')}">${(p.name||p.id).substring(0,55)}</span>
+      <span class="equip-cat">${p.category||''}</span>
+      <div class="qty-ctrl">
+        <button class="qty-btn qty-minus">−</button>
+        <span class="qty-val">${qty}</span>
+        <button class="qty-btn qty-plus">+</button>
+      </div>`;
+
+    const cb    = row.querySelector('.equip-check');
+    const minus = row.querySelector('.qty-minus');
+    const plus  = row.querySelector('.qty-plus');
+    const val   = row.querySelector('.qty-val');
+
+    cb.addEventListener('change', () => row.classList.toggle('unchecked', !cb.checked));
+    minus.addEventListener('click', () => { const n = parseInt(val.textContent); if (n > 1) val.textContent = n - 1; });
+    plus.addEventListener('click',  () => { val.textContent = parseInt(val.textContent) + 1; });
+
+    list.appendChild(row);
+  });
+  return list;
+}
+
+// ─── Show dual approach blocks (Option A / Option B) ───────────────────────
+function showApproachBlocks(approaches, fullRec) {
+  if (!approaches || !approaches.length) return;
+  const chat = document.getElementById('chat');
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'msg bot';
+  wrapper.innerHTML = `<div class="avatar">🤖</div>`;
+
+  const container = document.createElement('div');
+  container.style.cssText = 'flex:1;min-width:0';
+
+  const intro = document.createElement('div');
+  intro.className = 'bubble';
+  intro.style.cssText = 'margin-bottom:14px;max-width:100%';
+  intro.innerHTML = renderText('Here are **two approaches** for your setup — each has different trade-offs. Review both and choose the one that fits your infrastructure:');
+  container.appendChild(intro);
+
+  const blocksWrap = document.createElement('div');
+  blocksWrap.className = 'approaches-wrapper';
+
+  approaches.forEach(ap => {
+    const block = document.createElement('div');
+    block.className = 'approach-block';
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'approach-header';
+    header.innerHTML = `
+      <span class="approach-badge">Option ${ap.letter}</span>
+      <h3>${ap.name}</h3>`;
+    block.appendChild(header);
+
+    // Body: meta text (Best for / Pros / Cons)
+    const body = document.createElement('div');
+    body.className = 'approach-body';
+
+    // Extract Best for / Pros / Cons lines, stop at product list section
+    const skipPrefixes = ['For each', 'Complete signal', '---', 'SKU', 'BG-', 'Devices &', 'Step'];
+    const metaLines = ap.text.split('\n')
+      .slice(1)  // skip the "## Option X — name" line
+      .filter(l => {
+        const t = l.trim();
+        if (!t) return false;
+        return !skipPrefixes.some(p => t.startsWith(p));
+      })
+      .slice(0, 10)
+      .join('\n');
+    if (metaLines.trim()) {
+      const meta = document.createElement('div');
+      meta.className = 'approach-meta';
+      meta.innerHTML = renderText(metaLines.trim());
+      body.appendChild(meta);
+    }
+
+    // Equipment list
+    if (ap.candidates && ap.candidates.length) {
+      const listLabel = document.createElement('div');
+      listLabel.innerHTML = `<h3 style="font-size:12px;color:#9098b0;letter-spacing:.5px;text-transform:uppercase;margin:10px 0 6px">Equipment list</h3>`;
+      body.appendChild(listLabel);
+      body.appendChild(buildEquipList(ap.candidates, fullRec));
+    }
+
+    body.style.paddingBottom = '14px';
+    block.appendChild(body);
+    blocksWrap.appendChild(block);
+  });
+
+  container.appendChild(blocksWrap);
+
+  // Diagram button (for the full recommendation text)
+  const diagramBtn = document.createElement('button');
+  diagramBtn.className = 'diagram-btn';
+  diagramBtn.style.marginTop = '14px';
+  diagramBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/>
+    <rect x="9" y="15" width="6" height="6" rx="1"/>
+    <line x1="6" y1="9" x2="6" y2="12"/><line x1="18" y1="9" x2="18" y2="12"/>
+    <line x1="6" y1="12" x2="18" y2="12"/><line x1="12" y1="12" x2="12" y2="15"/>
+  </svg> ${t('diagram_btn')}`;
+
+  const diagramContainer = document.createElement('div');
+  diagramContainer.className = 'diagram-container';
+  diagramContainer.style.display = 'none';
+  let diagramLoaded = false;
+
+  diagramBtn.onclick = () => {
+    const open = diagramContainer.style.display !== 'none';
+    diagramContainer.style.display = open ? 'none' : 'block';
+    diagramBtn.classList.toggle('active', !open);
+    if (!open && !diagramLoaded) {
+      diagramLoaded = true;
+      loadDiagram(fullRec, diagramContainer);
+    }
+    if (!open) setTimeout(() => { chat.scrollTop = chat.scrollHeight; }, 100);
+  };
+
+  container.appendChild(diagramBtn);
+  container.appendChild(diagramContainer);
+
+  wrapper.appendChild(container);
+  chat.appendChild(wrapper);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// ─── Show chips ────────────────────────────────────────────────────────────
+function showChips(chips) {
+  const el = document.getElementById('chips');
+  el.innerHTML = '';
+  chips.forEach(label => {
+    const c = document.createElement('div');
+    c.className = 'chip'; c.textContent = label;
+    c.onclick = () => {
+      console.log('[BZB] chip clicked:', label, '| sessionId:', sessionId);
+      document.getElementById('input').value = label;
+      sendMessage();
+    };
+    el.appendChild(c);
+  });
+}
+
+// ─── Extract suggested quantity for a SKU from recommendation text ──────────
+function extractQty(recText, sku) {
+  const e = sku.replace(/[-]/g, '[-]');
+  const patterns = [
+    // "16 × BG-..." or "16× BG-..." — explicit × symbol (not letter x)
+    new RegExp(`(\\d+)\\s*×\\s*${e}`, 'i'),
+    // "BG-... × 16" — quantity after explicit ×
+    new RegExp(`${e}[^\\n]{0,40}×\\s*(\\d+)`, 'i'),
+    // "BG-... (qty: 16)" or "BG-... qty 16"
+    new RegExp(`${e}[^\\n]{0,40}\\bqty[:\\s]+(\\d+)`, 'i'),
+    // "N units of BG-..." or "N× BG-..."
+    new RegExp(`(\\d+)\\s+(?:units?\\s+of\\s+|×\\s*)${e}`, 'i'),
+  ];
+  for (const re of patterns) {
+    const m = recText.match(re);
+    if (m) {
+      const n = parseInt(m[1] || m[2]);
+      if (n > 0 && n < 200) return n;
+    }
+  }
+  return 1;
+}
+
+// ─── Show recommendation (flat list fallback) ──────────────────────────────
+function showRecommendation(rec, candidates) {
+  lastRecommendationText = rec;
+
+  const chat = document.getElementById('chat');
+  const block = document.createElement('div');
+  block.className = 'rec-block';
+
+  block.innerHTML = `<h3>Recommendation</h3>
+    <div style="font-size:13px;line-height:1.7;white-space:pre-wrap">${renderText(rec)}</div>`;
+
+  if (candidates && candidates.length) {
+    const listHeader = document.createElement('div');
+    listHeader.innerHTML = `<h3 style="margin-top:14px;margin-bottom:0">Equipment list</h3>`;
+    block.appendChild(listHeader);
+    block.appendChild(buildEquipList(candidates, rec));
+  }
+
+  const diagramBtn = document.createElement('button');
+  diagramBtn.className = 'diagram-btn';
+  diagramBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/>
+    <rect x="9" y="15" width="6" height="6" rx="1"/>
+    <line x1="6" y1="9" x2="6" y2="12"/><line x1="18" y1="9" x2="18" y2="12"/>
+    <line x1="6" y1="12" x2="18" y2="12"/><line x1="12" y1="12" x2="12" y2="15"/>
+  </svg> ${t('diagram_btn')}`;
+
+  const diagramContainer = document.createElement('div');
+  diagramContainer.className = 'diagram-container';
+  diagramContainer.style.display = 'none';
+  let diagramLoaded = false;
+
+  diagramBtn.onclick = () => {
+    const open = diagramContainer.style.display !== 'none';
+    diagramContainer.style.display = open ? 'none' : 'block';
+    diagramBtn.classList.toggle('active', !open);
+    if (!open && !diagramLoaded) { diagramLoaded = true; loadDiagram(rec, diagramContainer); }
+    if (!open) setTimeout(() => { chat.scrollTop = chat.scrollHeight; }, 100);
+  };
+
+  block.appendChild(diagramBtn);
+  block.appendChild(diagramContainer);
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'msg bot';
+  wrapper.innerHTML = `<div class="avatar">🤖</div>`;
+  wrapper.appendChild(block);
+  chat.appendChild(wrapper);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// ─── Detect diagram request in user message ───────────────────────────────
+function isDiagramRequest(text) {
+  const t = text.toLowerCase();
+  return /схем|диаграмм|diagram|draw|visuali|покажи.*соедин|connection.*diagram/.test(t);
+}
+
+// ─── Send message ──────────────────────────────────────────────────────────
+async function sendMessage() {
+  const input = document.getElementById('input');
+  const text = input.value.trim();
+  if (!text || !sessionId) return;
+
+  // If user is asking for a diagram and we have a recommendation, show it
+  if (isDiagramRequest(text) && lastRecommendationText) {
+    input.value = '';
+    input.style.height = 'auto';
+    document.getElementById('chips').innerHTML = '';
+    addMessage(text, 'user');
+
+    const chat = document.getElementById('chat');
+    const wrapper = document.createElement('div');
+    wrapper.className = 'msg bot';
+
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'avatar';
+    avatarDiv.textContent = '🤖';
+
+    const container = document.createElement('div');
+    container.style.cssText = 'width:100%;margin-top:4px';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = 'Here is the connection diagram for the recommended system:';
+
+    const diagContainer = document.createElement('div');
+    diagContainer.className = 'diagram-container';
+
+    wrapper.appendChild(avatarDiv);
+    wrapper.appendChild(container);
+    container.appendChild(bubble);
+    container.appendChild(diagContainer);
+    chat.appendChild(wrapper);
+    chat.scrollTop = chat.scrollHeight;
+
+    await loadDiagram(lastRecommendationText, diagContainer);
+    chat.scrollTop = chat.scrollHeight;
+    input.focus();
+    return;
+  }
+
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('chips').innerHTML = '';
+  document.getElementById('send').disabled = true;
+
+  addMessage(text, 'user');
+  showTyping();
+
+  const sendWithRetry = async (retrying = false) => {
+    try {
+      const res = await fetch(`${API}/chat/message`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ session_id: sessionId, message: text })
+      });
+
+      // Session expired or server restarted — reinit and retry once
+      if (res.status === 404 || res.status === 500) {
+        if (!retrying) {
+          await init(true);
+          return sendWithRetry(true);
+        }
+      }
+
+      const data = await res.json();
+      hideTyping();
+      if (data.message) addMessage(data.message, 'bot');
+      if (data.chips?.length) showChips(data.chips);
+      if (data.ready_to_search) startStreamingRecommendation(sessionId);
+
+    } catch(e) {
+      if (!retrying) {
+        // Network error — wait 1s, reinit session, retry once
+        await new Promise(r => setTimeout(r, 1000));
+        const ok = await init(true);
+        if (ok) return sendWithRetry(true);
+      }
+      hideTyping();
+      addMessage('Server unavailable — please reload the page.', 'bot');
+    }
+  };
+
+  await sendWithRetry();
+  document.getElementById('send').disabled = false;
+  input.focus();
+}
+
+// ─── SSE streaming recommendation ─────────────────────────────────────────
+function startStreamingRecommendation(sid) {
+  const chat = document.getElementById('chat');
+
+  // Container for this whole recommendation block
+  const wrapper = document.createElement('div');
+  wrapper.className = 'msg bot';
+  wrapper.innerHTML = `<div class="avatar">🤖</div>`;
+  const inner = document.createElement('div');
+  inner.style.cssText = 'flex:1;min-width:0';
+  wrapper.appendChild(inner);
+
+  // Cards label
+  const cardsLabel = document.createElement('div');
+  cardsLabel.className = 'bubble';
+  cardsLabel.style.cssText = 'margin-bottom:10px;max-width:100%';
+  cardsLabel.innerHTML = renderText(t('analyzing'));
+  inner.appendChild(cardsLabel);
+
+  // Perfect matches grid
+  const perfectGrid = document.createElement('div');
+  perfectGrid.className = 'product-cards';
+  inner.appendChild(perfectGrid);
+
+  // Partial matches section (hidden until first partial card arrives)
+  const partialSection = document.createElement('div');
+  partialSection.className = 'partial-section';
+  partialSection.style.display = 'none';
+  partialSection.innerHTML = `
+    <div class="partial-label">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      Partial match — not all requested features
+    </div>`;
+  const partialGrid = document.createElement('div');
+  partialGrid.className = 'product-cards';
+  partialSection.appendChild(partialGrid);
+  inner.appendChild(partialSection);
+
+  // Analyzing bar
+  const bar = document.createElement('div');
+  bar.className = 'analyzing-bar';
+  bar.innerHTML = `<div class="spin"></div> ${t('reading')}`;
+  inner.appendChild(bar);
+
+  // Recommendation text bubble (filled progressively)
+  const recBubble = document.createElement('div');
+  recBubble.className = 'rec-block';
+  recBubble.style.display = 'none';
+  inner.appendChild(recBubble);
+
+  chat.appendChild(wrapper);
+  chat.scrollTop = chat.scrollHeight;
+
+  let fullText = '';
+  let perfectCount = 0;
+  let partialCount = 0;
+
+  function makeCard(p, tier) {
+    const card = document.createElement('a');
+    card.className = 'product-card' + (tier === 'partial' ? ' partial-card' : '');
+    card.href = p.product_url || '#';
+    card.target = '_blank';
+    card.rel = 'noopener noreferrer';
+    const idx = tier === 'partial' ? partialCount : perfectCount;
+    card.style.animationDelay = (idx * 80) + 'ms';
+
+    if (p.image_url) {
+      const img = document.createElement('img');
+      img.className = 'product-card-img';
+      img.src = p.image_url;
+      img.alt = p.id;
+      img.loading = 'lazy';
+      img.onerror = () => img.replaceWith(makePlaceholder());
+      card.appendChild(img);
+    } else {
+      card.appendChild(makePlaceholder());
+    }
+
+    const body = document.createElement('div');
+    body.className = 'product-card-body';
+    body.innerHTML = `
+      <span class="product-card-sku">${p.id}</span>
+      <div class="product-card-name">${(p.name || p.id).substring(0, 80)}</div>
+      ${p.price_usd ? `<div class="product-card-price">$${p.price_usd.toLocaleString()}</div>` : ''}
+      ${p.stock_status ? `<div class="product-card-stock">${p.stock_status}</div>` : ''}`;
+    card.appendChild(body);
+    return card;
+  }
+
+  const es = new EventSource(`${API}/chat/stream/${sid}`);
+
+  es.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+
+    if (msg.type === 'product') {
+      const p = msg.product;
+      const tier = msg.tier || 'perfect';
+      if (p.id && p.product_url) skuUrlMap[p.id.toUpperCase()] = p.product_url;
+      if (p.id && p.image_url)   skuImgMap[p.id.toUpperCase()] = p.image_url;
+
+      const card = makeCard(p, tier);
+
+      if (tier === 'partial') {
+        partialSection.style.display = 'block';
+        partialGrid.appendChild(card);
+        partialCount++;
+      } else {
+        perfectGrid.appendChild(card);
+        perfectCount++;
+      }
+
+      const total = perfectCount + partialCount;
+      cardsLabel.innerHTML = renderText(total === 1 ? t('found_one', 1) : t('found_many', total));
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    else if (msg.type === 'text') {
+      fullText += msg.chunk;
+      recBubble.style.display = 'block';
+      // While streaming — plain fast render
+      recBubble.innerHTML = `<div style="font-size:13px;line-height:1.75;white-space:pre-wrap">${renderText(fullText)}</div>`;
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    else if (msg.type === 'done') {
+      es.close();
+      bar.remove();
+      const total = perfectCount + partialCount;
+      cardsLabel.innerHTML = renderText(t('found_final', total));
+      lastRecommendationText = fullText;
+
+      // Re-render with styled "Best pick" and "You might also need" blocks
+      if (fullText.trim()) {
+        recBubble.style.display = 'block';
+        recBubble.innerHTML = renderFinalRec(fullText);
+      }
+
+      chat.scrollTop = chat.scrollHeight;
+    }
+  };
+
+  es.onerror = () => {
+    es.close();
+    bar.innerHTML = t('error_rec');
+  };
+}
+
+// ─── Auto-resize textarea ──────────────────────────────────────────────────
+document.getElementById('input').addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 140) + 'px';
+});
+document.getElementById('input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+// ─── Start session ─────────────────────────────────────────────────────────
+function updateSessionBadge(sid) {
+  const badge = document.getElementById('session-badge');
+  const val   = document.getElementById('sid-val');
+  const btn   = document.getElementById('sid-copy');
+  if (!sid) { badge.style.display = 'none'; return; }
+  val.textContent = sid.slice(0, 8) + '…';
+  val.title = sid;
+  badge.style.display = 'flex';
+  btn.onclick = () => {
+    navigator.clipboard.writeText(sid).then(() => {
+      btn.textContent = '✓';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = '⎘'; btn.classList.remove('copied'); }, 1500);
+    });
+  };
+}
+
+async function init(silent = false) {
+  try {
+    const res = await fetch(`${API}/chat/start`, { method: 'POST' });
+    const data = await res.json();
+    sessionId = data.session?.session_id;
+    updateSessionBadge(sessionId);
+    if (!silent) {
+      if (data.message) addMessage(data.message, 'bot');
+      if (data.chips?.length) showChips(data.chips);
+    }
+    return true;
+  } catch(e) {
+    if (!silent) addMessage('Server unavailable — open http://127.0.0.1:8000/ and try again.', 'bot');
+    return false;
+  }
+}
+
+async function resetChat() {
+  sessionId = null;
+  lastRecommendationText = null;
+  document.getElementById('chat').innerHTML = '';
+  document.getElementById('chips').innerHTML = '';
+  document.getElementById('input').value = '';
+  await init();
+}
+
+init();
+</script>
+</body>
+</html>

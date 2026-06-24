@@ -1,0 +1,93 @@
+## Option A — Professional Live-Production Workflow (Recommended)
+
+**1. Cameras (×3)**  
+• BG-ADAMO-JR20X-B  
+  • Signals: HDMI + 3G-SDI + NDI  
+  • Res: 1080p60, 20× optical zoom, built-in tally  
+  • Why: Proven broadcast-quality PTZ, PoE power/control, built-in tally status  
+
+**2. PTZ Controller (1)**  
+• BG-COMMANDER-PRO  
+  • Protocol: IP & RS-232/422 VISCA, HDMI preview, NDI control  
+  • Why: Professional joystick, per-camera focus/zoom, on-screen feedback  
+
+**3. Production Switcher + Audio Mixer + Encoder + Preview (1)**  
+• BG-MFVS61-G2  
+  • Inputs: 6× HDMI/3G-SDI, 2× analog audio inputs (XLR/line)  
+  • Outputs: Program HDMI, Preview HDMI, Streaming (H.264), Audio Mix  
+  • Why: Combines 6-input switching, embedded audio mixing, single-button streaming to YouTube (RTMP), and built-in preview for talent  
+
+**4. Backup Stream Encoder (1)**  
+• BG-HAVS  
+  • Input: HDMI Program  
+  • Output: H.264/265 RTMP/RTSP (secondary YouTube backup)  
+  • Why: Hardware-failover encoder for simultaneous backup stream  
+
+**5. Network Switch for PoE­­+ & Control (1)**  
+• BG-FS8260  
+  • 8× 1 GbE PoE+ (30 W), 2× SFP  
+  • Why: Powers PTZ cameras, supports IP control, provides uplink for switcher/encoder to Internet  
+
+**6. Confidence Monitor (1)**  
+• Standard HDMI monitor (any brand, 24″–32″)  
+  • Why: Displays Program or Multiview via MFVS61 Preview output for performers  
+
+**7. Tally Lights (×3)**  
+• Industry-standard tally-light kit  
+  • Why: BZB Gear does not offer discrete tally fixtures; use camera tally output to drive external lights  
+
+**8. Streaming-Platform Configuration**  
+• Configure BG-MFVS61-G2 primary RTMP (YouTube)  
+• Configure BG-HAVS secondary RTMP (YouTube backup)  
+
+---
+
+## Complete Signal Chain (Option A)
+
+1. **Camera Power & Control**  
+   • BG-ADAMO-JR20X-B ← Cat6 PoE+ ← BG-FS8260  
+   • BG-COMMANDER-PRO ← Cat6 ← BG-FS8260  
+2. **Video Feed**  
+   • BG-ADAMO-JR20X-B 3G-SDI Out → Belden 1694A coax → SDI IN (1–3) on BG-MFVS61-G2  
+3. **Audio Feed**  
+   • Club microphones/instruments → XLR/line inputs on BG-MFVS61-G2 → internal audio mixer → embedded into HDMI Program  
+4. **Program & Preview Outputs**  
+   • Program HDMI OUT on BG-MFVS61-G2 →  
+     – HDMI cable → Stage monitor (confidence)  
+     – HDMI cable → HDMI IN on BG-HAVS (backup encoder)  
+   • Preview HDMI OUT on BG-MFVS61-G2 → HDMI cable → second stage monitor (optional)  
+5. **Streaming Uplink**  
+   • BG-MFVS61-G2 LAN port → Cat6 → BG-FS8260 → uplink to Internet router → YouTube primary RTMP  
+   • BG-HAVS LAN port → Cat6 → BG-FS8260 → uplink to Internet router → YouTube backup RTMP  
+
+---
+
+## Why This Works
+
+- All video signals are 1080p60 over 3G-SDI (up to 80 m on Belden 1694A) into a switcher built for that format.  
+- BG-MFVS61-G2 consolidates camera switching, analog audio mixing, streaming encoder and preview monitor in one rack-mount unit—minimizing gear count.  
+- BG-HAVS provides a completely independent backup stream in H.264/265.  
+- PoE+ switch powers/control PTZ cameras and joystick controller on the same network.  
+- Cameras’ built-in tally outputs drive external tally lights; controller commands tally state via VISCA/IP.  
+
+---
+
+## Also Required (standard commodity)
+
+- Belden 1694A coax cables + BNC connectors (one per camera)  
+- HDMI cables (program, preview, BG-HAVS inputs)  
+- XLR/¼″ audio cables (to BG-MFVS61-G2 audio inputs)  
+- HDMI monitor(s) for confidence feed  
+- Rack shelves, power strips, cable ties, XLR snakes as needed  
+- Internet router/firewall/VPN for RTMP outputs  
+
+---
+
+## External Requirements
+
+- Internet-connected router with sufficient upload bandwidth for two 1080p streams (mandatory)  
+- Tally-light fixtures and mounting hardware (mandatory)  
+
+---
+
+*All core AV gear in this workflow is BZB Gear. Only “commodity” items (cables, monitor, router, tally lights) are non-exclusive.*

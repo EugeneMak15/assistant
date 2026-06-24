@@ -1,0 +1,60 @@
+=== ANSWER ===
+## Recommended Configuration
+
+• 4× PTZ Cameras  
+  – BG-ADAMO-4K12X (12G-SDI + HDMI + NDI + Dante, 4K60)  
+
+• 4× SDI→HDMI Converters  
+  – BG-4KSH (12G-SDI to HDMI 2.0 converter, 4K60)  
+
+• 1× HDMI Matrix Switcher  
+  – BG-4K-44MA (4×4 HDMI 2.0 matrix, 18 Gbps, 4K60 HDR)  
+
+• 1× PTZ Controller  
+  – BG-COMMANDER-PRO (IP/RS-232/422 VISCA control, multi-camera preview)  
+
+• 2× 4K60 Monitors (customer-provided)  
+
+## Complete Signal Chain
+
+1. Camera 1: BG-ADAMO-4K12X → 12G-SDI coax (Belden 1694A) →  
+   Converter 1: BG-4KSH (SDI→HDMI 2.0 @4K60) → HDMI (Premium High Speed, <5 m) →  
+   Matrix Input 1: BG-4K-44MA  
+
+2. Camera 2: BG-ADAMO-4K12X → 12G-SDI coax → BG-4KSH → HDMI → Matrix Input 2  
+
+3. Camera 3: BG-ADAMO-4K12X → 12G-SDI coax → BG-4KSH → HDMI → Matrix Input 3  
+
+4. Camera 4: BG-ADAMO-4K12X → 12G-SDI coax → BG-4KSH → HDMI → Matrix Input 4  
+
+5. Matrix Output 1: BG-4K-44MA → HDMI → Monitor 1 (4K60)  
+6. Matrix Output 2: BG-4K-44MA → HDMI → Monitor 2 (4K60)  
+
+7. PTZ Control:  
+   BG-COMMANDER-PRO → IP (or RS-232/422) → All BG-ADAMO-4K12X cameras  
+
+## Why This Works
+
+• Cameras output 12G-SDI (11.88 Gbps) at 4K60 – compatible with BG-4KSH’s SDI input.  
+• BG-4KSH passes full 18 Gbps HDMI 2.0 4K60 to the switcher.  
+• BG-4K-44MA is an HDMI 2.0 matrix that supports 4 inputs & 4 outputs at 4K60 HDR, allowing any camera to feed any monitor.  
+• Premium HDMI cables (<5 m) ensure full 18 Gbps bandwidth.  
+• BG-COMMANDER-PRO provides reliable VISCA/IP control and on-screen tally/preview.  
+
+## Also Required
+
+– RG6 Quad-Shield Coax (Belden 1694A or equivalent) for each camera (max 80 m per run).  
+– Premium High Speed HDMI cables (18 Gbps certified) from each BG-4KSH to BG-4K-44MA and from matrix outputs to monitors.  
+– PoE++ (IEEE 802.3bt) switch or local 12 VDC power bricks for BG-ADAMO cameras.  
+– Rack-mount ears for BG-4K-44MA and converters if installing in a rack.  
+
+## Compatibility Warnings
+
+– 12G-SDI runs over RG6 are reliable up to 80 m; beyond that, add a BG-12GCSA re-clocking splitter.  
+– EDID on the BG-4K-44MA should be set to 4K60 on all connected monitors to avoid handshake issues.  
+– Ensure the PoE++ switch has sufficient budget for four BG-ADAMO-4K12X cameras (≈60 W each).  
+– BG-4KSH converters require local power – include power supplies in rack layout.  
+– Do not mix SDI and HDMI in the chain without these converters; direct SDI→HDMI needs BG-4KSH.
+
+=== SELECTED SKUs ===
+['BG-12GCSA', 'BG-4K-44MA', 'BG-4KSH', 'BG-ADAMO', 'BG-ADAMO-4K12X', 'BG-COMMANDER-PRO']
