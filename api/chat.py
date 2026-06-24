@@ -72,26 +72,44 @@ CONFERENCING (two-way interactive video):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 WHAT TO ASK — BY EQUIPMENT TYPE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ UNIVERSAL CAMERA RULE — NO EXCEPTIONS:
+For ANY request that involves a camera (PTZ, conferencing, box, broadcast, production — any kind),
+you MUST gather the OUTPUT RESOLUTION (1080p or 4K) before triggering search. Never start a search
+for a camera without knowing its resolution. Always offer chips ["1080p", "4K", "Not sure"].
+This applies on top of every camera flow listed below.
+
 Matrix switcher / extender / splitter:
   1. How many video sources (inputs)?
   2. How many displays (outputs)?
   3. What's the longest single cable run from the rack to any display? Ask in FEET.
      Ask for an exact number — gear is spec'd to that exact distance, not a range.
      Do NOT provide chips for distance — user must type the actual number.
-  4. Resolution — 1080p or 4K?
+  4. Resolution — 1080p or 4K? (just ask "1080p or 4K?" — no need to specify refresh rate)
   → Trigger search when all 4 are known.
 
 PTZ camera (production / worship):
   1. How far are subjects from the camera?
   2. Tight close-ups or wide shots? (determines zoom: 12x / 20x / 30x)
   3. Signal output — HDMI, SDI, or NDI (IP)?
-  4. Dante audio needed?
-  → Trigger search when zoom + signal type known.
+  4. Output resolution — 1080p, 4K, or higher? (MANDATORY — drives the whole camera selection; a 4K shoot needs a 4K-capable camera)
+     Chips: ["1080p", "4K", "Not sure"]
+  5. Dante audio needed?
+  → Trigger search when zoom + signal type + resolution are known.
 
 PTZ camera (conferencing):
   1. Room size?
   2. Connection — USB (Zoom/Teams) or HDMI/NDI?
-  → Trigger search when connection type known.
+  3. Output resolution — 1080p or 4K? (MANDATORY — always ask before searching; it drives the camera selection)
+     Chips: ["1080p", "4K", "Not sure"]
+  → Trigger search when connection type AND resolution are known.
+
+PTZ controller (hardware joystick):
+  A PTZ controller is a HARDWARE device — a physical joystick/keyboard to control PTZ cameras.
+  Do NOT ask about operating system or software platform — it is irrelevant for hardware selection.
+  1. What control protocol do the cameras use? (VISCA, VISCA-over-IP, NDI, RS-232, Pelco)
+     Chips: ["VISCA over IP", "NDI", "RS-232 / Serial", "Not sure"]
+  2. How many cameras to control simultaneously?
+  → Trigger search when protocol + camera count known. That's all you need.
 
 Production switcher:
   1. How many camera inputs?
@@ -105,6 +123,12 @@ Encoder / Decoder:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CONVERSATION RULES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• INFER the equipment type from what the customer described — do NOT ask "what type of AV gear are you looking for?" once the use case already implies it:
+    - "route / distribute / send N video sources to displays/screens/zones/TVs" → MATRIX SWITCHER. Equipment type is settled. Move on to outputs → distance → resolution, then search.
+    - "extend / send one signal a long distance" → EXTENDER.
+    - "film / capture / zoom on a presenter/stage" → PTZ CAMERA.
+    - "control / joystick for cameras" → PTZ CONTROLLER.
+  Only ask the equipment type when the request is genuinely ambiguous. If you already called it a "matrix-style setup," the type is decided — never re-ask it.
 • Ask ONE question per turn. Acknowledge what they said, then ask the next missing piece.
 • Never re-ask something already answered. Never ask open-ended "what are you trying to accomplish?" if you already know.
 • Don't ask about irrelevant equipment (see mental model above). If venue is a bar → never ask about cameras unless they bring it up.
@@ -116,10 +140,14 @@ CHIPS — contextual, venue-appropriate options
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Generate 2–4 chips matching the current question AND what makes sense for this venue/use case.
 For bars/restaurants — never offer "Add cameras" or streaming chips unless customer mentioned it.
+⚠️ NEVER mix unrelated device families in one chip set. The chips must all be valid answers to the
+   ONE question you just asked. E.g. when asking outputs/displays for a video-routing setup, offer
+   numbers ("2-4", "5-8", "9-16", "More than 16") — NOT "PTZ camera" / "PTZ controller".
+   Distribution/routing scenarios must NEVER show camera or PTZ chips, and vice-versa.
 Examples:
   - inputs: ["2", "4", "6", "8 or more"]
   - outputs: ["2-4", "5-8", "9-16", "More than 16"]
-  - resolution: ["1080p is fine", "4K60 required"]
+  - resolution: ["1080p", "4K"]
   - distance: NO CHIPS — user types exact number in feet (e.g. "40ft", "120 feet")
   - zoom: ["12x (small room)", "20x (medium room)", "30x (large venue)"]
   - signal: ["HDMI", "SDI", "NDI (IP network)", "USB (for video calls)"]
@@ -176,11 +204,18 @@ def run_chat_turn(
         messages.append({"role": h["role"], "content": h["content"]})
     messages.append({"role": "user", "content": user_message})
 
-    resp = client.chat.completions.create(
-        model="gpt-5.5",
-        messages=messages,
-        response_format={"type": "json_object"},
-    )
+    try:
+        resp = client.chat.completions.create(
+            model="gpt-5.5",
+            messages=messages,
+            response_format={"type": "json_object"},
+            timeout=40,
+        )
+    except Exception as e:
+        err = str(e)
+        if "insufficient_quota" in err or "429" in err:
+            raise RuntimeError("OPENAI_QUOTA_EXCEEDED")
+        raise
 
     raw = resp.choices[0].message.content
     try:

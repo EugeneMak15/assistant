@@ -322,12 +322,20 @@ def chat_message(body: ChatMessage):
     session_dict = {**session.model_dump(), **scenario_ext}
 
     # Run LLM conversation turn
-    result = run_chat_turn(
-        history=history[:-1],  # history before this message
-        user_message=body.message,
-        session_state=session_dict,
-        session_id=sid,
-    )
+    try:
+        result = run_chat_turn(
+            history=history[:-1],  # history before this message
+            user_message=body.message,
+            session_state=session_dict,
+            session_id=sid,
+        )
+    except RuntimeError as e:
+        if "OPENAI_QUOTA_EXCEEDED" in str(e):
+            return ChatResponse(
+                message="OpenAI API quota exceeded — please add credits at platform.openai.com and restart the server.",
+                chips=[], ready_to_search=False, candidates=[], recommendation=None, session=session,
+            )
+        raise
 
     # Persist scenario planner state in memory and DB
     for key in ("_scenario_plan", "_scenario_answers", "_clarification_round", "_selected_roles"):
@@ -361,9 +369,24 @@ def chat_message(body: ChatMessage):
             sql_skus = _find_matching_skus_for_flow_a(categories, scenario_answers)
         else:
             semantic_hits = semantic_search_products(search_query, n=12)
+            # Exclude AV-over-IP "controller" devices when searching for PTZ controllers
+            intent = result.get("intent", {})
+            eq_type = (intent.get("equipment_type") or "").lower()
+            if "controller" in eq_type or "joystick" in eq_type:
+                from api.db import get_conn as _get_conn
+                _conn = _get_conn()
+                _avoip = {r[0] for r in _conn.execute("SELECT id FROM products WHERE category='av_over_ip'")}
+                _conn.close()
+                semantic_hits = [h for h in semantic_hits if h["id"] not in _avoip]
             sql_skus = [h["id"] for h in semantic_hits] if semantic_hits else []
             categories = []
 
+        # NOTE: the LLM sanity filter is NOT run here. It used to run synchronously
+        # in this POST, blocking the response for tens of seconds — and then ran a
+        # SECOND time inside the SSE stream (stream_flow_a_recommendation), doubling
+        # the wait. The frontend ignores `candidates` from this response anyway and
+        # renders products exclusively from the SSE stream. So we return immediately
+        # with the consultant message and let the stream do the (single) filter pass.
         initial_candidates = _fetch_products_by_skus(sql_skus)
 
         # Store stream context so SSE endpoint can pick it up
@@ -429,6 +452,106 @@ def debug_session(session_id: str):
             for m in history
         ],
     }
+
+
+# ─── Debug annotations ────────────────────────────────────────────────────────
+
+import sqlite3 as _sqlite3
+import json as _json
+from datetime import datetime as _dt
+
+_DEBUG_DB = "debug_annotations.db"
+
+def _init_debug_db():
+    conn = _sqlite3.connect(_DEBUG_DB)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS annotated_sessions (
+            id          TEXT PRIMARY KEY,
+            session_id  TEXT,
+            saved_at    TEXT,
+            session_comment TEXT,
+            msg_comments    TEXT,
+            history         TEXT,
+            products_shown  TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+_init_debug_db()
+
+
+class SaveCommentsBody(BaseModel):
+    session_id: str
+    session_comment: str = ""
+    msg_comments: dict = {}
+    history: list = []
+    products_shown: list = []
+
+
+@app.post("/debug/save-comments", tags=["Debug"])
+def save_comments(body: SaveCommentsBody):
+    import uuid
+    ann_id = str(uuid.uuid4())
+    conn = _sqlite3.connect(_DEBUG_DB)
+    conn.execute(
+        "INSERT OR REPLACE INTO annotated_sessions VALUES (?,?,?,?,?,?,?)",
+        (
+            ann_id,
+            body.session_id,
+            _dt.utcnow().isoformat(),
+            body.session_comment,
+            _json.dumps(body.msg_comments),
+            _json.dumps(body.history),
+            _json.dumps(body.products_shown),
+        )
+    )
+    conn.commit()
+    conn.close()
+    return {"ok": True, "annotation_id": ann_id}
+
+
+@app.get("/debug/annotations", tags=["Debug"])
+def list_annotations():
+    conn = _sqlite3.connect(_DEBUG_DB)
+    rows = conn.execute(
+        "SELECT id, session_id, saved_at, session_comment FROM annotated_sessions ORDER BY saved_at DESC"
+    ).fetchall()
+    conn.close()
+    return [
+        {"id": r[0], "session_id": r[1], "saved_at": r[2],
+         "session_comment": r[3] or ""}
+        for r in rows
+    ]
+
+
+@app.get("/debug/annotations/{ann_id}", tags=["Debug"])
+def get_annotation(ann_id: str):
+    conn = _sqlite3.connect(_DEBUG_DB)
+    row = conn.execute(
+        "SELECT * FROM annotated_sessions WHERE id=?", (ann_id,)
+    ).fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "Not found")
+    return {
+        "id": row[0], "session_id": row[1], "saved_at": row[2],
+        "session_comment": row[3],
+        "msg_comments": _json.loads(row[4] or "{}"),
+        "history": _json.loads(row[5] or "[]"),
+        "products_shown": _json.loads(row[6] or "[]"),
+    }
+
+
+@app.delete("/debug/annotations/{ann_id}", tags=["Debug"])
+def delete_annotation(ann_id: str):
+    conn = _sqlite3.connect(_DEBUG_DB)
+    cur = conn.execute("DELETE FROM annotated_sessions WHERE id=?", (ann_id,))
+    conn.commit()
+    conn.close()
+    if cur.rowcount == 0:
+        raise HTTPException(404, "Not found")
+    return {"ok": True}
 
 
 # ─── Recommendation streaming (SSE) ──────────────────────────────────────────

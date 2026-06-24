@@ -564,6 +564,7 @@ def _find_matching_skus_via_interfaces(
         "conferencing bar": ["videobar"],
         "av over ip":      ["av_over_ip", "encoder_decoder"],
         "av-over-ip":      ["av_over_ip", "encoder_decoder"],
+        "av_over_ip":      ["av_over_ip"],   # internal supplement — only dedicated AV over IP products, not encoders
         "avoip":           ["av_over_ip", "encoder_decoder"],
         "ip distribution": ["av_over_ip", "encoder_decoder"],
         "transceiver":     ["av_over_ip", "encoder_decoder"],
@@ -755,6 +756,13 @@ def _find_matching_skus_via_interfaces(
                 out_pats = "p.name LIKE '%16x16%'"
             legacy_sql += f" AND (p.outputs >= ? OR (p.outputs IS NULL AND ({out_pats})))"
             legacy_params.append(min_outputs)
+            # Apply max_outputs ceiling (exclude grossly oversized switchers)
+            if max_outputs:
+                legacy_sql += " AND (p.outputs IS NULL OR p.outputs <= ?)"
+                legacy_params.append(max_outputs)
+            # For large scale (>16 outputs), require known capacity — exclude NULL-output small switchers
+            if min_outputs > 16:
+                legacy_sql += " AND p.outputs IS NOT NULL"
         if is_camera and signal_filter:
             legacy_sql += " AND p.output_signals LIKE ?"
             legacy_params.append(f"%{signal_filter}%")
@@ -767,12 +775,20 @@ def _find_matching_skus_via_interfaces(
     # If direct_cats were also requested, merge those results
     if direct_cats:
         dph = ",".join("?" * len(direct_cats))
+        direct_sql_extra = ""
+        direct_extra_params: list = []
+        # When matrix search adds av_over_ip, exclude controllers (only want TX/RX/transceivers)
+        if "av_over_ip" in direct_cats and is_matrix:
+            direct_sql_extra = (
+                " AND NOT (p.category = 'av_over_ip' AND "
+                "(p.title LIKE '%Controller%' OR p.title LIKE '%Smart Controller%'))"
+            )
         direct_rows = conn.execute(
             f"SELECT p.id FROM products p WHERE p.category IN ({dph}) "
             "AND (p.stock_status IS NULL OR p.stock_status NOT IN ('Discontinued', 'Limited Stock')) "
             "AND (p.site_category IS NULL OR p.site_category != 'Discontinued') "
-            "AND p.category != 'accessory'",
-            list(direct_cats)
+            f"AND p.category != 'accessory'{direct_sql_extra}",
+            list(direct_cats) + direct_extra_params
         ).fetchall()
         iface_skus.update(r[0] for r in direct_rows)
 
@@ -786,6 +802,21 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
     and the customer's specs. These SKUs will be passed as mandatory to the LLM so it can't
     silently omit any of them.
     """
+    # Multi-category requests (e.g. "PTZ camera + joystick + production switcher") MUST be
+    # searched one category at a time and then unioned. If searched together, the device-type
+    # flags (is_matrix / is_camera / is_ptz_controller) all turn on at once and their
+    # type-specific filters get ANDed into a single impossible query → zero results, even
+    # though the catalog has each product. Each category gets its own correctly-flagged search.
+    if len(requested_categories) > 1:
+        merged: list[str] = []
+        seen: set[str] = set()
+        for cat in requested_categories:
+            for sku in _find_matching_skus_for_flow_a([cat], answers):
+                if sku not in seen:
+                    seen.add(sku)
+                    merged.append(sku)
+        return merged
+
     CAT_MAP = {
         "matrix switcher": ["switcher"],
         "video matrix":    ["switcher"],
@@ -830,6 +861,8 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
         "audio amplifier": ["amplifier"],
         "controller":      ["controller"],
         "ptz controller":  ["controller"],
+        "joystick":        ["controller"],
+        "joystick controller": ["controller"],
         "multiviewer":     ["multiviewer"],
         "splitter":        ["splitter"],
         "converter":       ["converter"],
@@ -882,6 +915,12 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
     # Detect category type for specialised filtering
     is_matrix = any("matrix" in c or "switcher" in c for c in requested_categories)
     is_camera = any("camera" in c for c in requested_categories)
+    is_ptz_controller = any("controller" in c or "joystick" in c for c in requested_categories)
+
+    # For large-scale distribution, include AV over IP alternatives alongside switchers
+    # 9+ outputs or explicit av_over_ip request → show IPGEAR / MC-Series options too
+    if is_matrix and (min_outputs is not None and min_outputs > 8):
+        db_cats.update(["av_over_ip"])
 
     # Extract signal type / zoom / resolution from answers (cameras, encoders, extenders)
     signal_filter:     str | None = None
@@ -931,8 +970,10 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
     try:
         # ── Fast path: use structured product_interfaces table if ready ───────
         if _interfaces_table_ready():
+            # Pass expanded db_cats so fast path also includes av_over_ip when needed
+            expanded_cats = list(db_cats)
             return _find_matching_skus_via_interfaces(
-                requested_categories=requested_categories,
+                requested_categories=expanded_cats,
                 answers=answers,
                 min_inputs=min_inputs,
                 max_inputs=max_inputs,
@@ -960,17 +1001,39 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
             f"AND (stock_status IS NULL OR stock_status NOT IN ('Discontinued', 'Limited Stock')) "
             f"AND category != 'accessory'"
         )
+        # PTZ controller search must not include AV-over-IP "controller" devices
+        if is_ptz_controller:
+            sql += " AND category != 'av_over_ip'"
 
         if is_matrix and min_inputs:
-            sql += " AND name LIKE '%atrix%' AND (inputs IS NULL OR inputs >= ?)"
+            # av_over_ip products are scalable (no fixed input count) — exempt from matrix/size filters
+            # Check both name and title for 'atrix' since name field may just be the SKU
+            sql += " AND (category = 'av_over_ip' OR ((name LIKE '%atrix%' OR title LIKE '%atrix%') AND (inputs IS NULL OR inputs >= ?)))"
             params.append(min_inputs)
         elif min_inputs:
             sql += " AND (inputs IS NULL OR inputs >= ?)"
             params.append(min_inputs)
 
         if min_outputs:
-            sql += " AND (outputs IS NULL OR outputs >= ?)"
+            # av_over_ip: scalable, no fixed output count — always passes
+            # switchers: require enough outputs OR unknown (NULL)
+            sql += " AND (category = 'av_over_ip' OR outputs IS NULL OR outputs >= ?)"
             params.append(min_outputs)
+
+        # Exclude grossly oversized switchers (outputs > 2× needed)
+        # av_over_ip is scalable so always exempt; unknown-capacity switchers also pass
+        if min_outputs and max_outputs:
+            sql += " AND (category = 'av_over_ip' OR outputs IS NULL OR outputs <= ?)"
+            params.append(max_outputs)
+
+        # For large matrix searches, exclude AV over IP controllers (only want transceivers/transmitters/receivers)
+        if is_matrix and min_outputs and min_outputs > 8:
+            sql += " AND NOT (category = 'av_over_ip' AND (title LIKE '%Controller%' OR title LIKE '%Smart Controller%'))"
+
+        # For large-scale systems (>16 outputs), only include switchers with known capacity
+        # (prevents small 4x4/8x8 products with NULL outputs from appearing)
+        if is_matrix and min_outputs and min_outputs > 16:
+            sql += " AND (category = 'av_over_ip' OR outputs IS NOT NULL)"
 
         if is_camera:
             if signal_filter:

@@ -132,33 +132,37 @@ YOUR REASONING PROCESS (think step by step):
 
    ► For av_distribution (bars, restaurants, hotels, venues with multiple displays):
 
-     ⚠️ LARGE SCALE RULE — if num_outputs >= 20 OR distance > 70m:
-     Matrix switchers CANNOT support this scale. AV-over-IP is the ONLY viable technology.
-     In this case: DO NOT show a matrix switcher option at all.
-     Instead, compare the AV-over-IP product lines that match the customer's RESOLUTION requirement:
+     ⚠️ SCALE RULE — match technology to actual scale and distance:
 
-     Resolution specs per series (use to filter what you show):
+     Small-medium scale (≤ 16 displays, distance ≤ 70m):
+     • Option A — Matrix Switcher + HDBaseT: BG-4K-VP series (up to 16×16) + BG-EXH extender per display
+       Best for: fixed topology, simple management, no networking required
+     • Option B — AV-over-IP: IPGEAR encoders + decoders + managed switch
+       Best for: distance > 70m, growing/flexible setups, existing network infrastructure
+       Note: AV-over-IP requires a managed switch and networking expertise — NOT simpler than a matrix switcher for small installs.
+
+     Large scale (17–80 displays, any distance):
+     TWO valid approaches — present BOTH with honest trade-offs:
+     • Option A — Enterprise modular matrix (BG-MC-SERIES): single managed device, HDBaseT/fiber cards up to 150m
+       Best for: structured enterprise installs, IT-free operation, single-vendor support
+       Note: MC-3636M = 36×36 ($9,449), MC-8080M = 80×80 ($19,999) — pick the smallest that covers the need
+     • Option B — AV-over-IP (BG-IPGEAR-XTREME / ULTRA): distributed system, unlimited distance, scalable
+       Best for: venues needing future flexibility, IP infrastructure already in place
+       Total cost = (N sources × encoder price) + (M displays × decoder price) + managed switch — calculate this explicitly
+       ⚠️ AV-over-IP is NOT simpler than a matrix switcher at this scale — it requires IT network management
+
+     Resolution specs per AV over IP series (for Option B filtering):
        BG-VOP-MT / BG-VOP-CB        — max 4K30 / 1080p60 (budget, entry-level)
        BG-IPGEAR-PRO-T/R/C          — max 4K60 (mid-range, separate TX+RX units)
        BG-IPGEAR-ULTRA / ULTRA-C    — max 4K60 (mid-range, all-in-one transceiver)
        BG-IPGEAR-XTREME             — max 4K60, HDMI 2.1 (premium)
        BG-IPGEAR-XTREME-PRO         — max 8K60 (top tier)
 
-     Filtering rules by resolution:
+     AV over IP filtering rules by resolution:
        1080p only → show VOP series + PRO series (skip ULTRA/XTREME — overkill)
        4K60       → show PRO series + ULTRA + XTREME/XTREME-PRO (skip VOP-MT — only 4K30)
        4K30 / budget 4K → show all series including VOP
        8K         → show only XTREME-PRO
-
-     Present each eligible product line as a separate option with: pricing per unit,
-     total cost estimate for the customer's scale, pros/cons, and best-fit scenario.
-
-     Standard scale (< 20 displays, distance <= 70m):
-     • Option A — Matrix Switcher + HDBaseT: BG-4K-VP series matrix + BG-EXH extender per display
-       Best for: distances 5–70m, fixed source count, simple management without network
-     • Option B — AV-over-IP: BG-IPGEAR-ULTRA encoders (one per source) + decoders (one per display) + network switch
-       Best for: distances over 70m, growing setups, flexible routing, existing network infrastructure
-       Note: ALWAYS include the actual encoders (BG-IPGEAR-ULTRA or BG-IPGEAR-ULTRA-C) AND decoders in Option B
 
    ► For live production / broadcast studio:
      • Option A (integrated): use all-in-one multi-function devices — fewer boxes, simpler wiring
@@ -220,6 +224,17 @@ YOUR REASONING PROCESS (think step by step):
     If 5–70m, use BG-EXH-70C4. If longer, use fiber or AV-over-IP."
    Show the decision as a conditional rather than picking one product arbitrarily.
 
+   ⚠️ MC-SERIES MODULAR DISTANCE (CRITICAL — do NOT mark MC-series short on distance):
+   The BG-MC-SERIES modular matrices (BG-MC-88M / 1616M / 3636M / 8080M) take hot-swap I/O cards.
+   Their listed "150m" figure is the HDBaseT card only — they ALSO accept FIBER cards that reach up to 10 km.
+   So an MC-SERIES matrix covers ANY realistic cable run. When the longest run exceeds the HDBaseT
+   limit (>150m / ~492ft), do NOT treat the MC matrix as inadequate — instead state that the long runs
+   must use FIBER cards, and name the exact card SKUs as a required add-on (with the chassis):
+     • 4K runs:    BG-MC-IN-FIBER-4K (input) + BG-MC-OUT-FIBER-4K (output)  — 4-Ch 4K fiber, up to 10 km
+     • 1080p runs: BG-MC-IN-FIBER-2K (input) + BG-MC-OUT-FIBER-2K (output)  — 4-Ch FHD fiber, up to 10 km
+   Each card serves 4 channels, so divide the source/display count by 4 to get the number of cards needed.
+   Always put these fiber-card SKUs in the "You might also need:" section when the run needs fiber.
+
 7. ⚠️ COLOR VARIANT RULE (CRITICAL):
    Products ending in -B and -W are the SAME product in different colors (Black / White).
    NEVER recommend both BG-XXXXX-B and BG-XXXXX-W in the same build — pick ONE.
@@ -256,6 +271,11 @@ For each matching product (list ALL that fit, typically 2–6):
 ---
 
 **Best pick for your case:** [SKU] — [1-sentence reason based on what the customer told us]
+
+⚠️ BEST PICK FORMAT — STRICT (a UI component parses this line):
+- The text immediately after the colon MUST be a single valid SKU from the catalog (full SKU including any color/variant suffix, e.g. BG-UPTZ-20XHSU-B, NOT BG-UPTZ-20XHSU).
+- Then " — " then the reason. Do NOT prefix the SKU with letters, option labels ("A", "B", "Option B"), bullets, or extra words.
+- If the customer asked for MULTIPLE device types (e.g. camera + switcher), put the single most important SKU first, and mention the companion SKU(s) inside the reason sentence (e.g. "BG-UPTZ-20XHSU-B — pairs with the BG-COMMANDER-ULTRAX switcher to give you …"). Never write "B + SKU" or "A. SKU".
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 IF FLOW TYPE = solution_design:
@@ -591,11 +611,21 @@ Remove ALL accessory products. Accessories are NEVER part of main product recomm
 Indicators: SKU contains "-ACC-", or product is described as a rack bracket / mounting bracket / blank panel / cable management.
 Examples to always remove: BG-IPGEAR-PRO-ACC-RM10, BG-VOP-ACC-RM10, BG-IPGEAR-ULTRA-ACC-RM, BG-VPTZ-CM, BG-VPTZ-WM, BG-VPTZ-TPM.
 
-RULE 4 — LARGE SCALE (>= 20 outputs or distance > 70m):
-If the customer requirement mentions 20 or more display outputs, OR cable distance greater than 70m:
-  ✗ REMOVE: ALL matrix switchers and HDBaseT distribution kits — physically cannot support this scale/distance.
-  ✓ KEEP: ALL AV-over-IP solutions (BG-IPGEAR-PRO series, BG-IPGEAR-ULTRA, BG-IPGEAR-XTREME, BG-VOP series).
-  ✓ KEEP: Network switches (NET-* SKUs).
+RULE 4 — SCALE AND TECHNOLOGY RATIONALITY:
+Match the technology to the actual scale and context. Think like an integrator who has to justify the cost.
+
+  Small installs (≤8 displays, ≤30m cable runs):
+    ✗ REMOVE: AV-over-IP systems — overkill, adds networking complexity (managed switch, 27+ individual TX/RX units, IT support) for no real benefit over a matrix switcher.
+    ✓ KEEP: Matrix switchers, HDBaseT kits.
+
+  Large installs (>16 displays OR >60m cable runs):
+    ✓ KEEP: Modular enterprise matrix switchers (BG-MC-SERIES) — designed specifically for large-scale routing with HDBaseT/fiber cards up to 150m.
+    ✓ KEEP: AV-over-IP solutions (BG-IPGEAR-PRO, ULTRA, XTREME, BG-VOP) — valid alternative at this scale; cost vs complexity tradeoff.
+    ✓ KEEP: Network switches (NET-* SKUs) when AV-over-IP is included.
+    ✗ REMOVE: Small fixed-size matrix switchers (≤16×16 HDMI) — inadequate capacity or distance.
+
+  AV-over-IP REMOVE conditions (regardless of scale):
+    ✗ REMOVE: AV-over-IP CONTROLLERS (BG-VOP-CB, BG-IPGEAR-PRO-C, BG-IPGEAR-ULTRA-C, BG-IPGEAR-XTREME-C) when the customer is asking for video distribution, NOT for PTZ camera control.
 
 RULE 1 — WRONG DEVICE TYPE:
 Remove if the device's PRIMARY FUNCTION does not match what the customer asked for.
@@ -621,16 +651,23 @@ Remove if the device's PRIMARY FUNCTION does not match what the customer asked f
     ✗ REMOVE: Encoders, capture cards
     ✓ KEEP: Actual PTZ cameras with HDMI/SDI/NDI outputs
 
+  Customer wants PTZ CONTROLLER / JOYSTICK CONTROLLER (hardware device to control cameras):
+    ✗ REMOVE: AV-over-IP system controllers (BG-VOP-CB, BG-IPGEAR-PRO-C, BG-IPGEAR-ULTRA-C — these manage video routing, NOT cameras)
+    ✗ REMOVE: Cameras, encoders, switchers
+    ✓ KEEP: BG-COMMANDER series (joystick controllers for PTZ cameras)
+    ✓ KEEP: BG-CJ-IPRSPRO and similar serial/IP joystick devices
+
   Customer wants VIDEO EXTENDER:
     ✓ KEEP: HDBaseT extenders, fiber extenders, active HDMI cables
     ✗ REMOVE: Matrix switchers, capture cards
 
 RULE 2 — PORT COUNT OVERKILL (strictly numeric, NOT about resolution):
-Remove if the product's HDMI port count is MORE THAN 2× what the customer needs.
-  - Customer needs 5 inputs → remove anything with 11+ inputs (keep up to 10x10)
-  - Customer needs 5 outputs → remove anything with 11+ outputs
+Remove if the product's port count is MORE THAN 2× what the customer needs AND a better-fitting option exists in the same list.
+  - Customer needs 5 inputs → remove 16×16 if 8×8 is also in the list
+  - Customer needs 27 outputs → remove 80×80 if 36×36 is also in the list (80 > 2×27=54)
   ⚠️ RESOLUTION IS NOT OVERKILL — a 4×4 8K switcher is FINE for a 4-input need
   ⚠️ Keep the smallest next-size-up if nothing exactly fits (e.g. keep 8×8 for a 6×6 need)
+  ⚠️ If only one switcher option exists and it's oversized, KEEP it — don't leave the customer with nothing
 
 RULE 3 — WRONG TRANSMISSION TECHNOLOGY FOR VENUE:
 Remove if the product uses the wrong technology for the stated distance and scale.
@@ -654,6 +691,12 @@ PARTIAL — product is the right device type but a requested feature is absent o
   - Example: customer asked for multiviewer → product name/description does NOT say "MultiViewer" → PARTIAL, even if it might technically support it
   - Example: customer asked for 4K60 → product only does 4K30 → PARTIAL
   - When in doubt, classify as PARTIAL — it is always better to under-promise than to mislead
+
+MC-SERIES DISTANCE EXCEPTION (do NOT demote for distance):
+  - The BG-MC-SERIES modular matrices (BG-MC-88M / 1616M / 3636M / 8080M) accept hot-swap FIBER cards
+    reaching up to 10 km — far beyond their HDBaseT "150m" figure. Do NOT classify an MC-SERIES matrix as
+    PARTIAL just because the cable run exceeds 150m; with fiber cards it covers any realistic distance.
+    Judge MC-SERIES on inputs/outputs and resolution only — distance is always satisfiable via fiber cards.
 
 It is OK for the perfect list to be EMPTY if no products truly satisfy all requirements.
 Do NOT promote partials to perfect just to fill the list — it misleads the customer.
@@ -723,6 +766,9 @@ def _sanity_filter_candidates(
 
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
     try:
+        # 40s timeout — gpt-5.5 reasoning can be slow on large candidate lists;
+        # on timeout we fall back to unfiltered candidates (see except below)
+        # rather than freezing the chat for minutes.
         resp = client.chat.completions.create(
             model="gpt-5.5",
             messages=[
@@ -730,6 +776,8 @@ def _sanity_filter_candidates(
                 {"role": "user",   "content": user_msg},
             ],
             response_format={"type": "json_object"},
+            reasoning_effort="low",  # KEEP/REMOVE classification — no deep reasoning needed; cuts latency
+            timeout=40,
         )
         data = json.loads(resp.choices[0].message.content)
         perfect_raw = data.get("perfect", [])
@@ -856,6 +904,11 @@ Limitations: [1-2 bullet points only if relevant to this customer's case]
 ---
 
 Best pick for your case: [SKU] - [1-sentence reason tied to what the customer told us]
+
+⚠️ BEST PICK LINE — STRICT (parsed by the UI): the text right after the colon MUST be a single valid
+catalog SKU including any variant suffix (e.g. BG-UPTZ-20XHSU-B, not BG-UPTZ-20XHSU), followed by
+" - " and the reason. Never prefix it with a letter, an option label ("B", "Option B"), or a bullet.
+If multiple device types were requested, lead with one SKU and name the companion SKU inside the reason.
 
 RULES:
 - Analyze ONLY products from the PERFECT MATCHES list — never mention partial matches in your text

@@ -528,6 +528,119 @@
   .typing span:nth-child(3) { animation-delay: .3s; }
   @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
 
+  /* ── Debug annotations ── */
+  .msg-body {
+    flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative;
+  }
+  .msg-annotate-btn {
+    position: absolute; right: -26px; top: 6px;
+    background: none; border: none; cursor: pointer;
+    color: var(--text-3); font-size: 14px; padding: 2px 4px;
+    border-radius: 4px; opacity: 0; transition: opacity .15s, color .15s, background .15s;
+    line-height: 1; flex-shrink: 0;
+  }
+  /* bot: avatar left → button right of body (away from avatar)  ✓ */
+  /* user: avatar right → button left of body (away from avatar) ✓ */
+  .msg.user .msg-annotate-btn { right: auto; left: -26px; }
+  .msg:hover .msg-annotate-btn { opacity: 1; }
+  .msg-annotate-btn:hover { color: var(--blue); background: var(--blue-dim); }
+  .msg-annotate-btn.has-comment { opacity: 1; color: #f59e0b; }
+  .msg-annotate-btn.open { opacity: 1; color: #16a34a; background: #dcfce7; font-weight: 700; }
+  .msg-annotation {
+    display: none; margin-top: 4px;
+    background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px;
+    padding: 6px 10px;
+  }
+  .msg-annotation.open { display: block; }
+  .msg-annotation textarea {
+    width: 100%; border: none; background: transparent; resize: vertical;
+    font-size: 12px; font-family: inherit; color: #92400e; outline: none;
+    min-height: 48px; box-sizing: border-box;
+  }
+  .msg-annotation label {
+    font-size: 10px; font-weight: 600; color: #b45309; text-transform: uppercase;
+    letter-spacing: .5px; display: block; margin-bottom: 3px;
+  }
+  /* Global comment area */
+  #debug-bar {
+    width: 100%; max-width: 900px; margin: 0 auto;
+    padding: 8px 24px 0; box-sizing: border-box;
+  }
+  #debug-comment {
+    width: 100%; box-sizing: border-box;
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 12px; font-family: inherit; font-size: 12.5px;
+    color: var(--text-2); background: var(--surface); resize: vertical;
+    min-height: 48px; outline: none;
+    transition: border-color .15s;
+  }
+  #debug-comment:focus { border-color: var(--blue-b); }
+  #debug-comment::placeholder { color: var(--text-3); }
+  /* Review mode banner */
+  #review-banner {
+    display: none; width: 100%; max-width: 900px; margin: 8px auto 0;
+    background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;
+    padding: 8px 16px; box-sizing: border-box;
+    align-items: center; gap: 10px;
+  }
+  #review-banner.open { display: flex; }
+  #review-banner-label {
+    flex: 1; font-size: 12.5px; color: #1e40af; font-weight: 500;
+  }
+  #review-banner-label span { font-family: monospace; font-size: 11px; color: #3b82f6; }
+  /* In review mode, annotations always visible */
+  .review-mode .msg-annotation { display: block; }
+  .review-mode .msg-annotate-btn { display: none; }
+  #debug-actions {
+    display: flex; gap: 8px; margin-top: 6px; justify-content: flex-end;
+  }
+  .debug-btn {
+    background: none; border: 1px solid var(--border); color: var(--text-2);
+    padding: 5px 14px; border-radius: 6px; font-size: 12px; cursor: pointer;
+    font-family: inherit; transition: background .12s, border-color .12s;
+  }
+  .debug-btn:hover { background: var(--surface-2); border-color: #c4c4cc; }
+  .debug-btn.primary {
+    background: var(--blue); color: #fff; border-color: var(--blue);
+  }
+  .debug-btn.primary:hover { background: #1d4ed8; }
+  /* Sessions panel */
+  #sessions-panel {
+    display: none; position: fixed; top: 0; right: 0; bottom: 0; width: 420px;
+    background: var(--surface); border-left: 1px solid var(--border);
+    box-shadow: -4px 0 24px rgba(0,0,0,.08); z-index: 100;
+    flex-direction: column; overflow: hidden;
+  }
+  #sessions-panel.open { display: flex; }
+  #sessions-panel-header {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  #sessions-panel-header h2 { font-size: 14px; font-weight: 600; margin: 0; }
+  #sessions-close { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--text-3); }
+  #sessions-list { flex: 1; overflow-y: auto; padding: 12px; }
+  .session-item {
+    border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+    margin-bottom: 8px; cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  .session-item:hover { border-color: var(--blue-b); background: var(--blue-dim); }
+  .session-item-id { font-size: 10px; font-family: monospace; color: var(--text-3); }
+  .session-item-date { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .session-item-comment { font-size: 12.5px; color: var(--text-2); margin-top: 6px; line-height: 1.5; }
+  /* Detail view */
+  #session-detail { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  #session-detail.open { display: flex; }
+  #sessions-list-view { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+  #session-detail-body { flex: 1; overflow-y: auto; padding: 12px; }
+  .detail-back { background: none; border: none; color: var(--blue); cursor: pointer; font-size: 13px; padding: 0; margin-bottom: 12px; display: block; }
+  .detail-msg { margin-bottom: 10px; }
+  .detail-msg-role { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 3px; }
+  .detail-msg-role.user { color: var(--blue); }
+  .detail-msg-role.bot { color: #059669; }
+  .detail-msg-text { font-size: 12.5px; color: var(--text-2); line-height: 1.55; background: var(--surface-2); border-radius: 6px; padding: 8px 10px; }
+  .detail-annotation { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 6px; padding: 6px 10px; margin-top: 4px; font-size: 12px; color: #92400e; }
+  .detail-session-comment { background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 10px 12px; font-size: 13px; color: #166534; margin-bottom: 14px; }
+
   /* ── Scrollbar ── */
   #chat::-webkit-scrollbar { width: 4px; }
   #chat::-webkit-scrollbar-track { background: transparent; }
@@ -557,9 +670,31 @@
     <span class="sid-val" id="sid-val"></span>
     <button class="sid-copy" id="sid-copy" title="Copy session ID">⎘</button>
   </div>
+  <button class="debug-btn" onclick="openSessionsPanel()">Sessions</button>
   <button id="new-chat" onclick="resetChat()">+ New chat</button>
 </header>
 
+<!-- Sessions panel -->
+<div id="sessions-panel">
+  <div id="sessions-panel-header">
+    <h2>Annotated sessions</h2>
+    <button id="sessions-close" onclick="closeSessionsPanel()">✕</button>
+  </div>
+  <div id="sessions-list-view">
+    <div id="sessions-list"><p style="color:var(--text-3);font-size:13px;padding:8px">Loading...</p></div>
+  </div>
+  <div id="session-detail">
+    <div style="padding:12px 12px 0">
+      <button class="detail-back" onclick="showSessionsList()">← Back to list</button>
+    </div>
+    <div id="session-detail-body"></div>
+  </div>
+</div>
+
+<div id="review-banner">
+  <div id="review-banner-label">Viewing session <span id="review-banner-sid"></span></div>
+  <button class="debug-btn" onclick="exitReviewMode()">← Exit review</button>
+</div>
 <div id="chat"></div>
 
 <div id="input-area">
@@ -570,11 +705,31 @@
     </svg>
   </button>
 </div>
+<div id="debug-bar">
+  <textarea id="debug-comment" placeholder="Overall comment about this session — what went wrong, what should have happened..." rows="2"></textarea>
+  <div id="debug-actions">
+    <button class="debug-btn" onclick="openSessionsPanel()">View sessions</button>
+    <button class="debug-btn primary" onclick="saveComments()">Save comments</button>
+  </div>
+</div>
 
 <script>
 const API = '';
 let sessionId = null;
 let lastRecommendationText = null;
+
+// ─── Smart scroll: only auto-scroll if user is already near the bottom ──────
+// Prevents the view from yanking back down while the user is scrolling up to read.
+function isNearBottom(el, threshold = 120) {
+  return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
+}
+function scrollToBottom(force = false) {
+  const chat = document.getElementById('chat');
+  if (!chat) return;
+  if (force || isNearBottom(chat)) {
+    chat.scrollTop = chat.scrollHeight;
+  }
+}
 
 // ─── Language detection & UI strings ──────────────────────────────────────
 const CYRILLIC = /[а-яёА-ЯЁ]/;
@@ -778,6 +933,43 @@ async function loadDiagram(recText, container) {
 const skuUrlMap = {};
 const skuImgMap = {};
 
+// Known companion/accessory SKUs that are referenced in recommendation text but
+// are never emitted as search-result cards (so they'd otherwise have no link).
+// E.g. BG-MC-SERIES modular fiber cards needed for long (>150m) cable runs.
+const _MC_PAGE = 'https://bzbgear.com/product/bg-mc-series-8x8-16x16-36x36-modular-and-fully-configurable-seamless-4k60-matrix-switcher-with-video-wall-and-included-control-system/';
+Object.assign(skuUrlMap, {
+  'BG-MC-IN-FIBER-4K':  _MC_PAGE,
+  'BG-MC-OUT-FIBER-4K': _MC_PAGE,
+  'BG-MC-IN-FIBER-2K':  _MC_PAGE,
+  'BG-MC-OUT-FIBER-2K': _MC_PAGE,
+});
+
+// Resolve a product URL for a SKU, tolerating color/variant suffixes.
+// The LLM often writes the base SKU (BG-UPTZ-20XHSU) while the catalog stores
+// variants (BG-UPTZ-20XHSU-B/-S/-W). Try exact, then prefix, then suffix-strip.
+function resolveSkuUrl(sku) {
+  const up = sku.toUpperCase();
+  if (skuUrlMap[up]) return skuUrlMap[up];
+  // (a) catalog key is a variant of the written SKU: "BG-X" → "BG-X-B"
+  for (const key in skuUrlMap) {
+    if (key.startsWith(up + '-')) return skuUrlMap[key];
+  }
+  // (b) written SKU has a suffix the catalog key lacks: "BG-X-B" → "BG-X"
+  const stripped = up.replace(/-[A-Z]$/, '');
+  if (stripped !== up && skuUrlMap[stripped]) return skuUrlMap[stripped];
+  return null;
+}
+function resolveSkuImg(sku) {
+  const up = sku.toUpperCase();
+  if (skuImgMap[up]) return skuImgMap[up];
+  for (const key in skuImgMap) {
+    if (key.startsWith(up + '-')) return skuImgMap[key];
+  }
+  const stripped = up.replace(/-[A-Z]$/, '');
+  if (stripped !== up && skuImgMap[stripped]) return skuImgMap[stripped];
+  return null;
+}
+
 function renderText(text) {
   const escaped = text
     .replace(/&/g, '&amp;')
@@ -789,7 +981,7 @@ function renderText(text) {
   return escaped
     .replace(/\n/g, '<br>')
     .replace(/\b(B[GZ]-[\w-]+)\b/gi, (match) => {
-      const url = skuUrlMap[match.toUpperCase()];
+      const url = resolveSkuUrl(match);
       return url
         ? `<a href="${url}" target="_blank" rel="noopener noreferrer" class="sku-link">${match}</a>`
         : `<strong>${match}</strong>`;
@@ -830,9 +1022,11 @@ function renderFinalRec(text) {
     const starIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="#15803d" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
     if (sm) {
       const sku    = sm[1].toUpperCase();
-      const reason = sm[2].trim();
-      const url    = skuUrlMap[sku] || '#';
-      const img    = skuImgMap[sku];
+      // Strip stray option-label artifacts the LLM sometimes leaks, e.g.
+      // "B + BG-COMMANDER... - reason" or "Option B - reason" at the start.
+      const reason = sm[2].trim().replace(/^(?:Option\s+)?[A-Z]\s*[+\-–]\s*/i, '');
+      const url    = resolveSkuUrl(sku) || '#';
+      const img    = resolveSkuImg(sku);
       const imgHtml = img
         ? `<img src="${img}" class="best-pick-img" alt="${sku}">`
         : '';
@@ -867,16 +1061,265 @@ function renderFinalRec(text) {
 }
 
 // ─── Add message bubble ────────────────────────────────────────────────────
+// ─── Annotation state ──────────────────────────────────────────────────────
+let _msgIndex = 0;
+const _msgComments = {};   // { msgIdx: "comment text" }
+const _msgTexts   = {};    // { msgIdx: {role, text} } for saving history
+
 function addMessage(text, role = 'bot') {
   const chat = document.getElementById('chat');
   const div = document.createElement('div');
   div.className = `msg ${role}`;
-  div.innerHTML = `
-    <div class="avatar">${role === 'bot' ? '🤖' : '👤'}</div>
-    <div class="bubble">${renderText(text)}</div>`;
+  const idx = _msgIndex++;
+  div.dataset.msgIdx = idx;
+  _msgTexts[idx] = { role, text };
+
+  const body = document.createElement('div');
+  body.className = 'msg-body';
+  body.innerHTML = `<div class="bubble">${renderText(text)}</div>`;
+
+  const ann = document.createElement('div');
+  ann.className = 'msg-annotation';
+  ann.id = `ann-${idx}`;
+  ann.innerHTML = `<label>Comment — how should this have been different?</label>
+    <textarea placeholder="e.g. Should have asked about zoom first, not platform..." oninput="updateComment(${idx}, this)"></textarea>`;
+  body.appendChild(ann);
+
+  const annotateBtn = document.createElement('button');
+  annotateBtn.className = 'msg-annotate-btn';
+  annotateBtn.title = 'Add comment';
+  annotateBtn.textContent = '✎';
+  annotateBtn.onclick = () => toggleAnnotation(idx, annotateBtn);
+  body.appendChild(annotateBtn);
+
+  div.innerHTML = `<div class="avatar">${role === 'bot' ? '🤖' : '👤'}</div>`;
+  div.appendChild(body);
+
   chat.appendChild(div);
-  chat.scrollTop = chat.scrollHeight;
+  // Force-scroll when the user sends a message (they expect to follow their own input);
+  // for bot messages, respect the user's scroll position.
+  scrollToBottom(role === 'user');
   return div;
+}
+
+function toggleAnnotation(idx, btn) {
+  const ann = document.getElementById(`ann-${idx}`);
+  const isOpen = ann.classList.toggle('open');
+  if (isOpen) {
+    btn.textContent = '✓';
+    btn.classList.add('open');
+    ann.querySelector('textarea').focus();
+  } else {
+    // closing — persist value
+    const val = ann.querySelector('textarea').value.trim();
+    if (val) _msgComments[idx] = val;
+    else delete _msgComments[idx];
+    btn.classList.remove('open');
+    btn.classList.toggle('has-comment', !!val);
+    btn.textContent = '✎';
+  }
+}
+
+function updateComment(idx, ta) {
+  const val = ta.value.trim();
+  if (val) _msgComments[idx] = val;
+  else delete _msgComments[idx];
+  const btn = document.querySelector(`[data-msg-idx="${idx}"] .msg-annotate-btn`);
+  if (btn) btn.classList.toggle('has-comment', !!val);
+}
+
+// ─── Save comments ──────────────────────────────────────────────────────────
+async function saveComments() {
+  const comment = document.getElementById('debug-comment').value.trim();
+  const history = Object.entries(_msgTexts).map(([i, m]) => ({
+    index: +i, role: m.role, text: m.text.substring(0, 500)
+  }));
+  const body = {
+    session_id: sessionId || 'unknown',
+    session_comment: comment,
+    msg_comments: Object.fromEntries(
+      Object.entries(_msgComments).map(([k,v]) => [k, v])
+    ),
+    history,
+    products_shown: [],
+  };
+  try {
+    const r = await fetch(`${API}/debug/save-comments`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const data = await r.json();
+    if (data.ok) {
+      const btn = document.querySelector('#debug-actions .primary');
+      btn.textContent = '✓ Saved';
+      setTimeout(() => { btn.textContent = 'Save comments'; }, 2000);
+    }
+  } catch(e) { alert('Failed to save: ' + e.message); }
+}
+
+// ─── Sessions panel ─────────────────────────────────────────────────────────
+function openSessionsPanel() {
+  document.getElementById('sessions-panel').classList.add('open');
+  loadSessionsList();
+}
+function closeSessionsPanel() {
+  document.getElementById('sessions-panel').classList.remove('open');
+}
+function showSessionsList() {
+  document.getElementById('sessions-list-view').style.display = 'flex';
+  document.getElementById('session-detail').classList.remove('open');
+}
+
+async function loadSessionsList() {
+  showSessionsList();
+  const el = document.getElementById('sessions-list');
+  el.innerHTML = '<p style="color:var(--text-3);font-size:13px;padding:8px">Loading...</p>';
+  try {
+    const r = await fetch(`${API}/debug/annotations`);
+    const items = await r.json();
+    if (!items.length) {
+      el.innerHTML = '<p style="color:var(--text-3);font-size:13px;padding:8px">No saved sessions yet.</p>';
+      return;
+    }
+    el.innerHTML = '';
+    items.forEach(s => {
+      const d = document.createElement('div');
+      d.className = 'session-item';
+      const date = new Date(s.saved_at + 'Z').toLocaleString();
+      d.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+          <div>
+            <div class="session-item-id">${s.session_id}</div>
+            <div class="session-item-date">${date}</div>
+          </div>
+          <button class="debug-btn" style="flex-shrink:0;font-size:11px;padding:3px 8px" data-del="${s.id}" title="Delete">✕</button>
+        </div>
+        ${s.session_comment ? `<div class="session-item-comment">${s.session_comment}</div>` : ''}`;
+      d.querySelector('[data-del]').onclick = async e => {
+        e.stopPropagation();
+        if (!confirm('Delete this annotation?')) return;
+        await fetch(`${API}/debug/annotations/${s.id}`, { method: 'DELETE' });
+        loadSessionsList();
+      };
+      d.onclick = () => { closeSessionsPanel(); openSessionInChat(s.id); };
+      el.appendChild(d);
+    });
+  } catch(e) {
+    el.innerHTML = `<p style="color:red;font-size:13px;padding:8px">Error: ${e.message}</p>`;
+  }
+}
+
+// ─── Open session in main chat ──────────────────────────────────────────────
+let _reviewMode = false;
+
+async function openSessionInChat(annId) {
+  const r = await fetch(`${API}/debug/annotations/${annId}`);
+  const data = await r.json();
+
+  // Clear current chat and switch to review mode
+  const chat = document.getElementById('chat');
+  chat.innerHTML = '';
+  clearChips();
+  chat.classList.add('review-mode');
+  _reviewMode = true;
+
+  // Show banner
+  document.getElementById('review-banner-sid').textContent = data.session_id;
+  document.getElementById('review-banner').classList.add('open');
+
+  // Render all messages
+  (data.history || []).forEach(m => {
+    const div = addMessage(m.text, m.role === 'user' ? 'user' : 'bot');
+    const comment = data.msg_comments?.[String(m.index)];
+    if (comment) {
+      const ann = div.querySelector('.msg-annotation');
+      if (ann) {
+        ann.querySelector('textarea').value = comment;
+        // Mark button as has-comment
+        const btn = div.querySelector('.msg-annotate-btn');
+        if (btn) btn.classList.add('has-comment');
+      }
+    }
+  });
+
+  // Show session comment in the debug bar
+  document.getElementById('debug-comment').value = data.session_comment || '';
+}
+
+function exitReviewMode() {
+  const chat = document.getElementById('chat');
+  chat.classList.remove('review-mode');
+  document.getElementById('review-banner').classList.remove('open');
+  document.getElementById('debug-comment').value = '';
+  _reviewMode = false;
+  resetChat();
+}
+
+async function loadSessionDetail(annId) {
+  document.getElementById('sessions-list-view').style.display = 'none';
+  const detail = document.getElementById('session-detail');
+  detail.classList.add('open');
+  const body = document.getElementById('session-detail-body');
+  body.innerHTML = '<p style="padding:12px;color:var(--text-3)">Loading...</p>';
+
+  const r = await fetch(`${API}/debug/annotations/${annId}`);
+  const data = await r.json();
+  const date = new Date(data.saved_at + 'Z').toLocaleString();
+
+  body.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.style.padding = '0 12px 12px';
+
+  // Header row: session ID + copy + delete
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap';
+  header.innerHTML = `<span style="font-size:10px;color:var(--text-3);font-family:monospace">${data.session_id}</span>
+    <span style="font-size:10px;color:var(--text-3)">${date}</span>`;
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'debug-btn';
+  copyBtn.style.cssText = 'font-size:11px;padding:2px 8px';
+  copyBtn.textContent = 'Copy ID';
+  copyBtn.onclick = () => {
+    navigator.clipboard.writeText(data.session_id);
+    copyBtn.textContent = '✓ Copied';
+    setTimeout(() => { copyBtn.textContent = 'Copy ID'; }, 1500);
+  };
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'debug-btn';
+  delBtn.style.cssText = 'font-size:11px;padding:2px 8px;color:#dc2626;border-color:#fca5a5';
+  delBtn.textContent = 'Delete';
+  delBtn.onclick = async () => {
+    if (!confirm('Delete this annotation?')) return;
+    await fetch(`${API}/debug/annotations/${annId}`, { method: 'DELETE' });
+    showSessionsList();
+    loadSessionsList();
+  };
+
+  header.appendChild(copyBtn);
+  header.appendChild(delBtn);
+  wrap.appendChild(header);
+
+  if (data.session_comment) {
+    const sc = document.createElement('div');
+    sc.className = 'detail-session-comment';
+    sc.textContent = '💬 ' + data.session_comment;
+    wrap.appendChild(sc);
+  }
+
+  (data.history || []).forEach(m => {
+    const comment = data.msg_comments?.[m.index];
+    const md = document.createElement('div');
+    md.className = 'detail-msg';
+    md.innerHTML = `<div class="detail-msg-role ${m.role}">${m.role === 'bot' ? '🤖 Bot' : '👤 User'}</div>
+      <div class="detail-msg-text">${m.text}</div>
+      ${comment ? `<div class="detail-annotation">✎ ${comment}</div>` : ''}`;
+    wrap.appendChild(md);
+  });
+
+  body.appendChild(wrap);
 }
 
 // ─── Typing indicator ──────────────────────────────────────────────────────
@@ -1355,7 +1798,7 @@ function startStreamingRecommendation(sid) {
   inner.appendChild(recBubble);
 
   chat.appendChild(wrapper);
-  chat.scrollTop = chat.scrollHeight;
+  scrollToBottom();
 
   let fullText = '';
   let perfectCount = 0;
@@ -1417,7 +1860,7 @@ function startStreamingRecommendation(sid) {
 
       const total = perfectCount + partialCount;
       cardsLabel.innerHTML = renderText(total === 1 ? t('found_one', 1) : t('found_many', total));
-      chat.scrollTop = chat.scrollHeight;
+      scrollToBottom();
     }
 
     else if (msg.type === 'text') {
@@ -1425,7 +1868,7 @@ function startStreamingRecommendation(sid) {
       recBubble.style.display = 'block';
       // While streaming — plain fast render
       recBubble.innerHTML = `<div style="font-size:13px;line-height:1.75;white-space:pre-wrap">${renderText(fullText)}</div>`;
-      chat.scrollTop = chat.scrollHeight;
+      scrollToBottom();
     }
 
     else if (msg.type === 'done') {
@@ -1490,7 +1933,7 @@ async function init(silent = false) {
     }
     return true;
   } catch(e) {
-    if (!silent) addMessage('Server unavailable — open http://127.0.0.1:8000/ and try again.', 'bot');
+    if (!silent) addMessage('Server unavailable — please reload the page or try again in a moment.', 'bot');
     return false;
   }
 }
@@ -1501,6 +1944,13 @@ async function resetChat() {
   document.getElementById('chat').innerHTML = '';
   clearChips();
   document.getElementById('input').value = '';
+  // Reset annotation state
+  _msgIndex = 0;
+  Object.keys(_msgComments).forEach(k => delete _msgComments[k]);
+  Object.keys(_msgTexts).forEach(k => delete _msgTexts[k]);
+  document.getElementById('debug-comment').value = '';
+  const btn = document.querySelector('#debug-actions .primary');
+  if (btn) btn.textContent = 'Save comments';
   await init();
 }
 
