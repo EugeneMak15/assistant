@@ -109,10 +109,12 @@
     width: 100%;
     max-width: 900px;
     overflow-y: auto;
+    overflow-x: hidden;   /* prevent the stray horizontal scrollbar above the input */
     padding: 28px 24px 0;
     display: flex;
     flex-direction: column;
     gap: 22px;
+    min-width: 0;
   }
 
   /* ── Messages ── */
@@ -327,6 +329,18 @@
   }
 
   /* ── Best pick highlight ── */
+  .pdf-download {
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-top: 16px;
+    padding: 9px 16px;
+    border-radius: 8px;
+    background: #2563eb; color: #fff;
+    font-size: 13px; font-weight: 600;
+    text-decoration: none;
+    transition: background .15s;
+  }
+  .pdf-download:hover { background: #1d4ed8; }
+  .pdf-download svg { flex-shrink: 0; }
   .best-pick-block {
     margin-top: 16px;
     border-radius: 10px;
@@ -1551,6 +1565,20 @@ function clearChips() {
   document.querySelectorAll('.chips-row').forEach(el => el.remove());
 }
 
+function showNewChatSuggestion() {
+  clearChips();
+  const row = document.createElement('div');
+  row.className = 'chips-row';
+  const c = document.createElement('div');
+  c.className = 'chip';
+  c.style.cssText = 'background:#2563eb;color:#fff;font-weight:600;border-color:#2563eb';
+  c.textContent = '➕ Start a new chat';
+  c.onclick = () => resetChat();
+  row.appendChild(c);
+  document.getElementById('chat').appendChild(row);
+  scrollToBottom();
+}
+
 function showChips(chips) {
   clearChips();
   const row = document.createElement('div');
@@ -1727,6 +1755,8 @@ async function sendMessage() {
       if (data.message) addMessage(data.message, 'bot');
       if (data.chips?.length) showChips(data.chips);
       if (data.ready_to_search) startStreamingRecommendation(sessionId);
+      // Follow-up handler detected a different topic → offer a fresh chat
+      if (data.suggest_new_chat) showNewChatSuggestion();
 
     } catch(e) {
       if (!retrying) {
@@ -1882,6 +1912,19 @@ function startStreamingRecommendation(sid) {
       if (fullText.trim()) {
         recBubble.style.display = 'block';
         recBubble.innerHTML = renderFinalRec(fullText);
+      }
+
+      // PDF download link — branded doc with all found equipment + notes + contacts.
+      // Appended to `inner` (always visible) — NOT recBubble, which stays hidden when
+      // no recommendation text streamed (e.g. quota error) and would hide the button.
+      if (total > 0) {
+        const pdf = document.createElement('a');
+        pdf.href = `${API}/chat/pdf/${sid}`;
+        pdf.target = '_blank';
+        pdf.rel = 'noopener';
+        pdf.className = 'pdf-download';
+        pdf.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>Download PDF (equipment + notes)`;
+        inner.appendChild(pdf);
       }
 
       chat.scrollTop = chat.scrollHeight;

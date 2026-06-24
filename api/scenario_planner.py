@@ -685,11 +685,18 @@ def _find_matching_skus_via_interfaces(
                 sql += " AND pi.supports_4k = 1"
 
         if zoom_filter:
-            zoom_n = int(zoom_filter.replace("x", ""))
-            # allow ±2x tolerance (e.g. asking 20x also shows 20x exactly)
+            zf = zoom_filter.replace("x", "")
+            if "-" in zf:
+                # Range like "25-30" → match the whole span with a little tolerance
+                lo, hi = zf.split("-", 1)
+                zmin, zmax = int(lo) - 1, int(hi) + 1
+            else:
+                zoom_n = int(zf)
+                # single value: allow a small upper tolerance
+                zmin, zmax = zoom_n - 1, zoom_n + 3
             sql += " AND pi.zoom_optical >= ? AND pi.zoom_optical <= ?"
-            params.append(zoom_n - 1)
-            params.append(zoom_n + 3)
+            params.append(zmin)
+            params.append(zmax)
 
         if needs_ndi:
             sql += " AND pi.out_ndi = 1"
@@ -767,8 +774,13 @@ def _find_matching_skus_via_interfaces(
             legacy_sql += " AND p.output_signals LIKE ?"
             legacy_params.append(f"%{signal_filter}%")
         if is_camera and zoom_filter:
-            legacy_sql += " AND p.name LIKE ?"
-            legacy_params.append(f"%{zoom_filter}%")
+            if "-" in zoom_filter:
+                lo, hi = zoom_filter.replace("x", "").split("-", 1)
+                legacy_sql += " AND (p.name LIKE ? OR p.name LIKE ?)"
+                legacy_params.append(f"%{lo}X%"); legacy_params.append(f"%{hi}X%")
+            else:
+                legacy_sql += " AND p.name LIKE ?"
+                legacy_params.append(f"%{zoom_filter}%")
         legacy_rows = conn.execute(legacy_sql, legacy_params).fetchall()
         iface_skus.update(row[0] for row in legacy_rows)
 
@@ -951,17 +963,22 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
             if any(w in a_low for w in ("standard", "hdmi", "sdi", "regular", "normal", "no ndi", "without ndi")):
                 needs_ndi = False
                 needs_dante = False
-        if any(w in q_low for w in ("zoom", "зум", "magnif")):
-            for z in ("31x", "30x", "25x", "20x", "12x", "10x"):
-                if z in a_low:
-                    zoom_filter = z
-                    break
-            # Also parse plain numbers like "20" or "around 20"
-            if not zoom_filter:
-                import re as _re
-                m = _re.search(r'\b(10|12|20|25|30|31)\b', a_low)
-                if m:
-                    zoom_filter = m.group(1) + "x"
+        if any(w in q_low for w in ("zoom", "зум", "magnif")) or "x)" in a_low or "x " in a_low:
+            import re as _re
+            # Range first, e.g. "25-30x" / "10-12x" → keep as "MIN-MAXx"
+            rng = _re.search(r'(\d{1,2})\s*[-–]\s*(\d{1,2})\s*x', a_low)
+            if rng:
+                zoom_filter = f"{rng.group(1)}-{rng.group(2)}x"
+            else:
+                for z in ("31x", "30x", "25x", "20x", "12x", "10x"):
+                    if z in a_low:
+                        zoom_filter = z
+                        break
+                # Also parse plain numbers like "20" or "around 20"
+                if not zoom_filter:
+                    m = _re.search(r'\b(10|12|20|25|30|31)\b', a_low)
+                    if m:
+                        zoom_filter = m.group(1) + "x"
         if any(w in q_low for w in ("resolution", "разреш")) and not resolution_filter:
             if   "4k60" in a_low: resolution_filter = "4K60"
             elif "4k"   in a_low: resolution_filter = "4K"
@@ -1043,8 +1060,13 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
                 sql += " AND resolutions LIKE ?"
                 params.append(f"%{resolution_filter}%")
             if zoom_filter:
-                sql += " AND name LIKE ?"
-                params.append(f"%{zoom_filter}%")
+                if "-" in zoom_filter:
+                    lo, hi = zoom_filter.replace("x", "").split("-", 1)
+                    sql += " AND (name LIKE ? OR name LIKE ?)"
+                    params.append(f"%{lo}X%"); params.append(f"%{hi}X%")
+                else:
+                    sql += " AND name LIKE ?"
+                    params.append(f"%{zoom_filter}%")
 
         rows = conn.execute(sql, params).fetchall()
         conn.close()

@@ -13,6 +13,23 @@ CONSULTANT_SYSTEM = """You are Alex, a senior AV Sales Consultant with 20 years 
 YOUR JOB: Gather just enough info to find the right product, then trigger search. Keep it tight — 4-6 questions max.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RULE #1 — ABSOLUTELY FORBIDDEN QUESTIONS (highest priority, no exceptions)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+NEVER ask any of these, under any circumstances:
+  (a) "what are you looking to do / what's the use case / what are you trying to accomplish" — and never a
+      generic use-case menu of chips.
+  (b) "which AV device are we selecting / what type of AV gear / which device do you need" — if the customer
+      already named a device (e.g. "cameras"), the device IS known. Do NOT re-ask it, and do NOT offer a
+      device-type chip menu (Matrix switcher / HDMI extender / PTZ camera / Production switcher, etc.).
+The customer's FIRST message already states the use case and/or the device — read it and use it.
+  Example: "I need cameras for live streaming a small concert" → device = PTZ cameras, use case = concert
+  streaming. Both are KNOWN. Gather ONLY the camera specs (distance→zoom, signal, resolution). The MOMENT
+  you have those three, set ready_to_search=true and search — do NOT ask device type, use case, or anything
+  else. If scope is genuinely unclear, ask ONE specific question ("Just the cameras, or the full streaming
+  chain — switcher + encoder?"), never a generic menu.
+This rule overrides everything below.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CRITICAL: TRACK WHAT YOU ALREADY KNOW
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Before every response, mentally list what has already been established in this conversation.
@@ -89,7 +106,11 @@ Matrix switcher / extender / splitter:
 
 PTZ camera (production / worship):
   1. How far are subjects from the camera?
-  2. Tight close-ups or wide shots? (determines zoom: 12x / 20x / 30x)
+  2. Tight close-ups or wide shots? — this is how you derive zoom WITHOUT asking the user a raw "what zoom?" question.
+     Combine the stated DISTANCE with the shot tightness to estimate the zoom, and SHOW the implied zoom
+     in parentheses on each chip so the user sees what each choice means. Example chips for a short throw:
+       ["Wide shots (12x)", "Some close-ups (20x)", "Tight face close-ups (30x)"]
+     Scale the numbers up for longer distances (e.g. far throw tight shots → 30x; short throw wide → 12x).
   3. Signal output — HDMI, SDI, or NDI (IP)?
   4. Output resolution — 1080p, 4K, or higher? (MANDATORY — drives the whole camera selection; a 4K shoot needs a 4K-capable camera)
      Chips: ["1080p", "4K", "Not sure"]
@@ -123,6 +144,13 @@ Encoder / Decoder:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CONVERSATION RULES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• ⚠️ DEVICES ALREADY NAMED → product_selection, NEVER ask the use case (see RULE #1 at top):
+  If the customer explicitly named one or more device types (e.g. "camera and joystick and production switcher"),
+  the flow is product_selection. Ask ONLY each named device's per-device spec questions (see lists above).
+  When every named device has its required specs, set ready_to_search=true and STOP asking — do not invent
+  extra questions to fill space.
+  MULTI-DEVICE EXAMPLE — "camera + joystick + production switcher": gather camera specs (count, distance/zoom,
+  signal, resolution), joystick protocol, switcher inputs → then SEARCH. Nothing else.
 • INFER the equipment type from what the customer described — do NOT ask "what type of AV gear are you looking for?" once the use case already implies it:
     - "route / distribute / send N video sources to displays/screens/zones/TVs" → MATRIX SWITCHER. Equipment type is settled. Move on to outputs → distance → resolution, then search.
     - "extend / send one signal a long distance" → EXTENDER.
@@ -144,12 +172,21 @@ For bars/restaurants — never offer "Add cameras" or streaming chips unless cus
    ONE question you just asked. E.g. when asking outputs/displays for a video-routing setup, offer
    numbers ("2-4", "5-8", "9-16", "More than 16") — NOT "PTZ camera" / "PTZ controller".
    Distribution/routing scenarios must NEVER show camera or PTZ chips, and vice-versa.
+⚠️ IMPLIED-SPEC ANNOTATION: when a question does NOT directly ask for a numeric spec but the answer
+   determines one (e.g. "tight close-ups vs wide shots" implies the zoom level), append the implied
+   value in parentheses on each chip so the user sees what the choice means — e.g.
+   "Wide shots (12x)", "Some close-ups (20x)", "Tight face close-ups (30x)". Compute the value from
+   everything known so far (e.g. distance + shot tightness → zoom).
+   The annotated value (or range) MUST come from values that ACTUALLY exist in the catalog — for zoom,
+   use only the CATALOG ZOOM LEVELS provided in the system context. A range is fine when it brackets
+   real adjacent options (e.g. "Wide shots (10-12x)"), but never annotate a value not in the catalog.
 Examples:
   - inputs: ["2", "4", "6", "8 or more"]
   - outputs: ["2-4", "5-8", "9-16", "More than 16"]
   - resolution: ["1080p", "4K"]
   - distance: NO CHIPS — user types exact number in feet (e.g. "40ft", "120 feet")
-  - zoom: ["12x (small room)", "20x (medium room)", "30x (large venue)"]
+  - zoom (direct): ["12x (small room)", "20x (medium room)", "30x (large venue)"]
+  - shot type (zoom implied): ["Wide shots (12x)", "Some close-ups (20x)", "Tight face close-ups (30x)"]
   - signal: ["HDMI", "SDI", "NDI (IP network)", "USB (for video calls)"]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -186,6 +223,39 @@ When ready_to_search=true:
 """
 
 
+_CAMERA_ZOOMS_CACHE: list[int] | None = None
+
+
+def _available_camera_zooms() -> list[int]:
+    """Distinct optical zoom levels of cameras actually in the catalog (cached)."""
+    global _CAMERA_ZOOMS_CACHE
+    if _CAMERA_ZOOMS_CACHE is not None:
+        return _CAMERA_ZOOMS_CACHE
+    zooms: set[int] = set()
+    try:
+        from api.db import get_conn
+        conn = get_conn()
+        # Prefer structured interface data
+        for r in conn.execute(
+            "SELECT DISTINCT pi.zoom_optical FROM product_interfaces pi "
+            "JOIN products p ON p.id = pi.sku "
+            "WHERE p.category='camera' AND pi.zoom_optical IS NOT NULL AND pi.zoom_optical > 1"
+        ):
+            zooms.add(int(r[0]))
+        # Fallback: parse zoom from camera SKUs (e.g. BG-UPTZ-20XHSU)
+        if not zooms:
+            import re as _re
+            for r in conn.execute("SELECT id FROM products WHERE category='camera'"):
+                m = _re.search(r"(\d+)X", str(r[0]).upper())
+                if m:
+                    zooms.add(int(m.group(1)))
+        conn.close()
+    except Exception:
+        return []
+    _CAMERA_ZOOMS_CACHE = sorted(zooms)
+    return _CAMERA_ZOOMS_CACHE
+
+
 def run_chat_turn(
     history: list[dict],
     user_message: str,
@@ -200,6 +270,19 @@ def run_chat_turn(
 
     # Build messages for the consultant
     messages = [{"role": "system", "content": CONSULTANT_SYSTEM}]
+    # If this conversation is about cameras, tell the model which optical zoom levels
+    # actually exist in the catalog so zoom chips only ever use real, available values.
+    convo_text = " ".join(h.get("content", "") for h in history) + " " + user_message
+    if any(w in convo_text.lower() for w in ("camera", "ptz", "zoom", "close-up", "wide shot")):
+        zooms = _available_camera_zooms()
+        if zooms:
+            zlist = ", ".join(f"{z}x" for z in zooms)
+            messages.append({"role": "system", "content": (
+                f"CATALOG ZOOM LEVELS (optical) actually available for cameras: {zlist}.\n"
+                "When you build any zoom or shot-type chip, the parenthesized zoom MUST be chosen ONLY "
+                "from these real values. Prefer a tight range that brackets real adjacent options when it "
+                "helps (e.g. \"Wide shots (10-12x)\"), but never invent a zoom value not in this list."
+            )})
     for h in history:
         messages.append({"role": h["role"], "content": h["content"]})
     messages.append({"role": "user", "content": user_message})
@@ -234,6 +317,46 @@ def run_chat_turn(
     ready    = bool(data.get("ready_to_search"))
     msg      = data.get("message", "")
     sq       = data.get("search_query", "")
+
+    # ── Reliability guardrail (deterministic, overrides a stalling model) ──────
+    # The model sometimes asks a redundant "which device / what use case" question
+    # even though every required camera spec is already on the table. For a
+    # single-device CAMERA request, once zoom + signal + resolution are known,
+    # FORCE the search. Specs are read from the user's own answers (most reliable),
+    # then intent, then accumulated session_state.
+    import re as _re
+    _user_text = " ".join(h.get("content", "") for h in history if h.get("role") == "user")
+    _user_text = (_user_text + " " + user_message).lower()
+    _is_cam = any(w in _user_text for w in ("camera", "cameras", "ptz"))
+    _other_family = any(w in _user_text for w in (
+        "matrix", "switcher", "joystick", "controller", "extender",
+        "encoder", "decoder", "splitter", "video wall", "kvm", "amplifier",
+    ))
+    if not ready and _is_cam and not _other_family:
+        _zoom = intent.get("zoom") or session_state.get("zoom")
+        if not _zoom:
+            m = _re.search(r'(\d{1,2})\s*x', _user_text)
+            _zoom = m.group(1) + "x" if m else None
+        _sig = intent.get("signal_type") or session_state.get("signal_type")
+        if not _sig:
+            for s in ("hdmi", "sdi", "ndi", "usb"):
+                if s in _user_text:
+                    _sig = s.upper(); break
+        _res = intent.get("resolution") or session_state.get("resolution")
+        if not _res:
+            if "4k" in _user_text:   _res = "4K"
+            elif "1080" in _user_text: _res = "1080p"
+        if _zoom and _sig and _res:
+            ready = True
+            intent.setdefault("equipment_type", "PTZ camera")
+            intent.setdefault("zoom", _zoom)
+            intent.setdefault("signal_type", _sig)
+            intent.setdefault("resolution", _res)
+            if not sq:
+                sq = f"{_res} {_sig} PTZ camera {_zoom} optical zoom"
+            if "find" not in msg.lower():
+                msg = "Got it — let me find the best camera options..."
+            chips = []
 
     # Build scenario plan from intent (used by SQL filter downstream)
     flow       = intent.get("flow", "solution_design")
@@ -324,6 +447,105 @@ def _normalise_res(r: str) -> str:
     if "1080" in r:
         return "1080p60"
     return r
+
+
+FOLLOWUP_SYSTEM = """You are Alex, a senior AV consultant. The customer has ALREADY received a product search
+result for a specific need, and is now asking follow-up questions in the same chat.
+
+You are given:
+- TOPIC: what this chat's search was about
+- PRODUCTS FOUND: the SKUs that were shown, with name, price, and key specs
+- RECOMMENDATION: the recommendation text the customer saw
+
+DECIDE which case the new message is:
+
+CASE 1 — ON-TOPIC follow-up (answer it):
+  The question is about the products found or the technology/topic of this search:
+  comparisons ("which is cheaper/best/smaller"), pricing, specs, compatibility, cabling,
+  setup/how-to, differences between the found options, "what about the other one", etc.
+  → Answer directly and concisely using ONLY the product data and recommendation provided.
+    Reference exact SKUs and the prices given. Never invent products, prices, or specs not in the data.
+    When asked "which is cheaper/most expensive", compare the prices listed and name the SKU.
+
+CASE 2 — DIFFERENT TOPIC (suggest a new chat):
+  The message is a clearly different need — a different device family or a new project unrelated
+  to this search (e.g. the search was about cameras and now they ask about matrix switchers, or a
+  whole new room/setup). Do NOT try to answer it from this chat's context.
+  → Politely say this chat is focused on <TOPIC>, and suggest starting a new chat (the "+ New chat"
+    button) so the new request isn't mixed up with the previous one's history.
+
+Reply as JSON only:
+{
+  "message": "your reply to the customer",
+  "new_topic": false
+}
+Set "new_topic": true ONLY for CASE 2.
+"""
+
+
+def run_followup_turn(history: list[dict], user_message: str, results: dict) -> dict:
+    """
+    Post-search Q&A. The customer already got results; answer questions about the found
+    products / technology, or detect a topic change and suggest starting a new chat.
+
+    `results` = { "topic": str, "products": [ {id, name, price_usd, ...} ], "rec_text": str }
+    Returns { "message": str, "suggest_new_chat": bool }
+    """
+    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+    # Build a compact product context (SKU, name, price, a few specs)
+    lines = []
+    for p in results.get("products", []):
+        parts = [f"SKU: {p.get('id')}"]
+        if p.get("name"):       parts.append(f"name: {p['name']}")
+        if p.get("price_usd") is not None:
+            try:    parts.append(f"price: ${float(p['price_usd']):.0f}")
+            except Exception: pass
+        if p.get("inputs") is not None and p.get("outputs") is not None:
+            parts.append(f"{p['inputs']}x{p['outputs']}")
+        if p.get("stock_status"): parts.append(str(p["stock_status"]))
+        lines.append(" | ".join(parts))
+    product_block = "\n".join(lines) if lines else "(no products on record)"
+
+    rec_text = (results.get("rec_text") or "").strip()
+    topic    = results.get("topic") or "the previous search"
+
+    context_msg = (
+        f"TOPIC: {topic}\n\n"
+        f"PRODUCTS FOUND:\n{product_block}\n\n"
+        + (f"RECOMMENDATION SHOWN:\n{rec_text[:2000]}\n\n" if rec_text else "")
+        + f"Customer's follow-up message: {user_message}"
+    )
+
+    messages = [{"role": "system", "content": FOLLOWUP_SYSTEM}]
+    # Include a little recent conversation for pronoun/context resolution
+    for h in history[-6:]:
+        messages.append({"role": h["role"], "content": h["content"]})
+    messages.append({"role": "user", "content": context_msg})
+
+    try:
+        resp = client.chat.completions.create(
+            model="gpt-5.5",
+            messages=messages,
+            response_format={"type": "json_object"},
+            reasoning_effort="low",
+            timeout=40,
+        )
+    except Exception as e:
+        err = str(e)
+        if "insufficient_quota" in err or "429" in err:
+            raise RuntimeError("OPENAI_QUOTA_EXCEEDED")
+        raise
+
+    try:
+        data = json.loads(resp.choices[0].message.content)
+    except Exception:
+        data = {"message": "Sorry, could you rephrase that?", "new_topic": False}
+
+    return {
+        "message": data.get("message", ""),
+        "suggest_new_chat": bool(data.get("new_topic")),
+    }
 
 
 def get_opening_message() -> dict:

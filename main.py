@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from api.models import SessionState, SessionUpdate, Product, RecommendRequest, RecommendResponse
-from api.sessions import create_session, get_session, update_session
+from api.sessions import create_session, get_session, update_session, restore_session
 from api.layer1 import search_products, get_product
 from api.layer2 import get_chunks_for_candidates, semantic_search_products
 from api.layer3 import get_recommendation
@@ -234,6 +234,7 @@ def recommend(body: RecommendRequest):
 _chat_histories: dict[str, list[dict]] = {}
 _scenario_state:  dict[str, dict]       = {}   # _scenario_plan, _scenario_answers, _clarification_round
 _pending_recs:    dict[str, dict]       = {}   # session_id -> {status, result, error}
+_session_results: dict[str, dict]       = {}   # session_id -> {topic, skus, rec_text} after a search completes
 
 
 def _fetch_products_by_skus(skus: list[str]) -> list[Product]:
@@ -272,6 +273,7 @@ class ChatResponse(BaseModel):
     session: Optional[SessionState] = None
     required_roles: list[dict] = []
     solution_approaches: list[SolutionApproach] = []
+    suggest_new_chat: bool = False
 
 
 @app.post("/chat/start", response_model=ChatResponse, tags=["Chat"])
@@ -295,12 +297,9 @@ def chat_message(body: ChatMessage):
     if not os.environ.get("OPENAI_API_KEY"):
         raise HTTPException(400, "OPENAI_API_KEY not set")
 
-    session = get_session(body.session_id)
-    if not session:
-        raise HTTPException(404, "Session not found. Call /chat/start first.")
+    sid = body.session_id
 
     # Load history and scenario state — memory first, DB fallback (survives hot-reload)
-    sid = body.session_id
     if sid not in _chat_histories or sid not in _scenario_state:
         db_scenario, db_history = load_chat_state(sid)
         if sid not in _chat_histories:
@@ -308,10 +307,52 @@ def chat_message(body: ChatMessage):
         if sid not in _scenario_state:
             _scenario_state[sid] = db_scenario
 
+    session = get_session(sid)
+    if not session:
+        # In-memory session store was wiped (server restart / hot-reload). If this
+        # id has persisted chat history, restore the session so the conversation
+        # continues with its full context instead of starting over.
+        if _chat_histories.get(sid):
+            session = restore_session(sid)
+        else:
+            raise HTTPException(404, "Session not found. Call /chat/start first.")
+
     history = _chat_histories[sid]
 
     # Add user message to history
     history.append({"role": "user", "content": body.message})
+
+    # ── Follow-up mode ────────────────────────────────────────────────────────
+    # If this session already completed a search, answer questions about the found
+    # products / topic instead of restarting the gathering flow. If the message is a
+    # clearly different need, the handler flags suggest_new_chat so the UI can offer
+    # to start fresh (avoids mixing unrelated history).
+    fres = _session_results.get(sid)
+    if fres and fres.get("skus"):
+        from api.chat import run_followup_turn
+        products = [p.model_dump() for p in _fetch_products_by_skus(fres["skus"])]
+        try:
+            fout = run_followup_turn(
+                history=history[:-1],
+                user_message=body.message,
+                results={"topic": fres.get("topic", ""), "products": products, "rec_text": fres.get("rec_text", "")},
+            )
+        except RuntimeError as e:
+            if "OPENAI_QUOTA_EXCEEDED" in str(e):
+                return ChatResponse(
+                    message="OpenAI API quota exceeded — please add credits at platform.openai.com and restart the server.",
+                    chips=[], ready_to_search=False, session=session,
+                )
+            raise
+        history.append({"role": "assistant", "content": fout["message"]})
+        save_chat_state(sid, _scenario_state.get(sid, {}), history)
+        return ChatResponse(
+            message=fout["message"],
+            chips=[],
+            ready_to_search=False,
+            session=session,
+            suggest_new_chat=fout["suggest_new_chat"],
+        )
 
     # Store selected_roles before building session dict
     if body.selected_roles:
@@ -400,6 +441,11 @@ def chat_message(body: ChatMessage):
             "scenario_plan": scenario_plan,
             "session_dict": session_dict,
         }
+
+        # Seed follow-up state with the topic; the SSE stream fills in the final
+        # SKUs + recommendation text once it completes.
+        _topic = ", ".join(categories) if categories else (search_query or scenario_plan.get("scenario_summary", ""))
+        _session_results[sid] = {"topic": _topic, "skus": [], "rec_text": ""}
 
         # Сбрасываем план сессии
         _scenario_state[sid] = {}
@@ -577,6 +623,12 @@ def stream_recommendation_sse(session_id: str):
 
         print(f"[SSE] session={session_id} flow={flow} sql_skus={sql_skus}")
         full_text = []
+        collected_skus: list[str] = []   # SKUs actually shown — used for follow-up Q&A
+
+        def _save_followup():
+            if session_id in _session_results:
+                _session_results[session_id]["skus"] = collected_skus
+                _session_results[session_id]["rec_text"] = "".join(full_text)
 
         if flow in ("product_selection", "hybrid"):
             gen = stream_flow_a_recommendation(
@@ -612,7 +664,10 @@ def stream_recommendation_sse(session_id: str):
                     conn.close()
                     if row:
                         p = Product(**row_to_dict(row))
+                        collected_skus.append(sku)
                         yield f"data: {_json.dumps({'type': 'product', 'product': p.model_dump()})}\n\n"
+            full_text.append(answer)
+            _save_followup()
             yield f"data: {_json.dumps({'type': 'text', 'chunk': answer})}\n\n"
             yield f"data: {_json.dumps({'type': 'done'})}\n\n"
             return
@@ -637,21 +692,47 @@ def stream_recommendation_sse(session_id: str):
                     conn.close()
                     if row:
                         p = Product(**row_to_dict(row))
+                        collected_skus.append(sku.upper())
                         yield f"data: {_json.dumps({'type': 'product', 'product': p.model_dump(), 'tier': tier})}\n\n"
                     else:
                         print(f"[SSE Flow A] sku {sku} not found in DB")
 
                 elif event_type == "done":
+                    _save_followup()
                     yield f"data: {_json.dumps({'type': 'done'})}\n\n"
         except Exception as exc:
             import traceback
             print(f"[SSE ERROR] {exc}\n{traceback.format_exc()}")
+            _save_followup()
             yield f"data: {_json.dumps({'type': 'done'})}\n\n"
 
     return StreamingResponse(
         generate(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+# ─── PDF export ───────────────────────────────────────────────────────────────
+
+@app.get("/chat/pdf/{session_id}", tags=["Chat"])
+def export_pdf(session_id: str):
+    """Branded PDF of a completed search: found equipment + consultant notes + contacts."""
+    res = _session_results.get(session_id)
+    if not res or not res.get("skus"):
+        raise HTTPException(404, "No completed results for this session yet")
+    from fastapi.responses import Response
+    from api.pdf_export import generate_recommendation_pdf
+    products = [p.model_dump() for p in _fetch_products_by_skus(res["skus"])]
+    pdf_bytes = generate_recommendation_pdf(
+        products=products,
+        rec_text=res.get("rec_text", ""),
+        topic=res.get("topic", ""),
+    )
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'inline; filename="BZBGear-Recommendation.pdf"'},
     )
 
 
