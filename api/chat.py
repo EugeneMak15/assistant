@@ -76,8 +76,8 @@ Matrix switcher / extender / splitter:
   1. How many video sources (inputs)?
   2. How many displays (outputs)?
   3. What's the longest single cable run from the rack to any display? Ask in FEET.
-     Always ask for the worst-case (longest) run — gear is selected for that distance.
-     Chips: ["Under 30ft", "30–100ft", "100–200ft", "Over 200ft"]
+     Ask for an exact number — gear is spec'd to that exact distance, not a range.
+     Do NOT provide chips for distance — user must type the actual number.
   4. Resolution — 1080p or 4K?
   → Trigger search when all 4 are known.
 
@@ -120,7 +120,7 @@ Examples:
   - inputs: ["2", "4", "6", "8 or more"]
   - outputs: ["2-4", "5-8", "9-16", "More than 16"]
   - resolution: ["1080p is fine", "4K60 required"]
-  - distance (always in feet): ["Under 30ft", "30–100ft", "100–200ft", "Over 200ft"]
+  - distance: NO CHIPS — user types exact number in feet (e.g. "40ft", "120 feet")
   - zoom: ["12x (small room)", "20x (medium room)", "30x (large venue)"]
   - signal: ["HDMI", "SDI", "NDI (IP network)", "USB (for video calls)"]
 
