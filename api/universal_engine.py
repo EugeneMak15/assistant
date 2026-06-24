@@ -821,7 +821,7 @@ def _apply_hard_feature_rules(
     return perfect, partial
 
 
-FLOW_A_SYSTEM = f"""You are a BZB Gear product specialist helping a customer compare specific equipment options.
+_FLOW_A_SYSTEM_BASE = f"""You are a BZB Gear product specialist helping a customer compare specific equipment options.
 
 AV SIGNAL CHAIN RULES AND BEST PRACTICES
 {AV_KNOWLEDGE}
@@ -867,11 +867,73 @@ RULES:
 - If a product has a color note (Black / White), mention the color options in one line - do not treat the alternate color as a separate product
 - Never present accessories (SKUs containing "-ACC-") as main product recommendations
 
-After the product comparison and best pick, add a short "You might also need:" section:
-- If cameras were recommended: suggest PTZ controllers / joystick controllers and production switchers
-- If matrix switchers were recommended: suggest cameras and control systems
-- If encoders/decoders were recommended: suggest compatible cameras or switchers
-Keep this section brief (2-3 bullet points max). Do not name specific SKUs - just suggest the categories."""
+{{UPSELL_BLOCK}}"""
+
+# Scenario-specific upsell rules injected into FLOW_A_SYSTEM at call time
+_UPSELL_BY_SCENARIO = {
+    "av_distribution": (
+        "After the product comparison and best pick, add a short 'You might also need:' section.\n"
+        "Scenario: bar / restaurant / lobby / multi-screen venue (video distribution).\n"
+        "ALLOWED suggestions: HDMI extenders or HDBaseT receivers (if distances are long), "
+        "IP control systems, audio distribution amplifiers, media players.\n"
+        "NEVER suggest: PTZ cameras, PTZ controllers, production switchers, streaming encoders, audio mixers.\n"
+        "Keep to 2-3 bullet points max. No specific SKUs — categories only."
+    ),
+    "conference_room": (
+        "After the product comparison and best pick, add a short 'You might also need:' section.\n"
+        "Scenario: conference / meeting room.\n"
+        "ALLOWED suggestions: PTZ camera (if not already recommended), presentation switcher, "
+        "audio conferencing system, display.\n"
+        "NEVER suggest: production switchers, streaming encoders, audio mixers.\n"
+        "Keep to 2-3 bullet points max. No specific SKUs — categories only."
+    ),
+    "live_production": (
+        "After the product comparison and best pick, add a short 'You might also need:' section.\n"
+        "Scenario: live production / broadcast studio / concert / event.\n"
+        "ALLOWED suggestions: PTZ controllers / joystick controllers, production switcher, "
+        "streaming encoder, audio mixer.\n"
+        "Keep to 2-3 bullet points max. No specific SKUs — categories only."
+    ),
+    "broadcast_studio": (
+        "After the product comparison and best pick, add a short 'You might also need:' section.\n"
+        "Scenario: broadcast studio.\n"
+        "ALLOWED suggestions: PTZ controllers, production switcher, streaming encoder, audio mixer.\n"
+        "Keep to 2-3 bullet points max. No specific SKUs — categories only."
+    ),
+    "house_of_worship": (
+        "After the product comparison and best pick, add a short 'You might also need:' section.\n"
+        "Scenario: house of worship.\n"
+        "ALLOWED suggestions: PTZ controllers, production switcher, streaming encoder, confidence monitors.\n"
+        "Keep to 2-3 bullet points max. No specific SKUs — categories only."
+    ),
+    "education": (
+        "After the product comparison and best pick, add a short 'You might also need:' section.\n"
+        "Scenario: classroom / training room.\n"
+        "ALLOWED suggestions: display, audio system, presentation switcher.\n"
+        "NEVER suggest: PTZ cameras, production switchers, streaming encoders.\n"
+        "Keep to 2-3 bullet points max. No specific SKUs — categories only."
+    ),
+    "digital_signage": (
+        "After the product comparison and best pick, add a short 'You might also need:' section.\n"
+        "Scenario: digital signage.\n"
+        "ALLOWED suggestions: media player, display management system, video distribution.\n"
+        "NEVER suggest: cameras, production switchers.\n"
+        "Keep to 2-3 bullet points max. No specific SKUs — categories only."
+    ),
+}
+
+_UPSELL_DEFAULT = (
+    "After the product comparison and best pick, add a short 'You might also need:' section.\n"
+    "Suggest only equipment that directly complements the recommended product "
+    "(e.g. extenders if a matrix was recommended, controllers if cameras were recommended).\n"
+    "Do NOT suggest cameras unless this is a production, conferencing, or worship scenario.\n"
+    "Keep to 2-3 bullet points max. No specific SKUs — categories only."
+)
+
+
+def _build_flow_a_system(scenario_type: str = "") -> str:
+    upsell = _UPSELL_BY_SCENARIO.get(scenario_type, _UPSELL_DEFAULT)
+    return _FLOW_A_SYSTEM_BASE.replace("{UPSELL_BLOCK}", upsell)
 
 
 def get_flow_a_recommendation(
@@ -944,10 +1006,11 @@ def get_flow_a_recommendation(
         + f"\n\n{lang_note}"
     )
 
+    scenario_type = (plan or {}).get("scenario_type", "")
     resp = client.chat.completions.create(
         model="gpt-5.5",
         messages=[
-            {"role": "system", "content": FLOW_A_SYSTEM},
+            {"role": "system", "content": _build_flow_a_system(scenario_type)},
             {"role": "user",   "content": user_message},
         ],
     )
@@ -1054,10 +1117,11 @@ def stream_flow_a_recommendation(
         + f"\n\n{lang_note}"
     )
 
+    scenario_type = (plan or {}).get("scenario_type", "")
     stream = client.chat.completions.create(
         model="gpt-5.5",
         messages=[
-            {"role": "system", "content": FLOW_A_SYSTEM},
+            {"role": "system", "content": _build_flow_a_system(scenario_type)},
             {"role": "user",   "content": user_message},
         ],
         stream=True,
