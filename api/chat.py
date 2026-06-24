@@ -75,8 +75,10 @@ WHAT TO ASK — BY EQUIPMENT TYPE
 Matrix switcher / extender / splitter:
   1. How many video sources (inputs)?
   2. How many displays (outputs)?
-  3. Longest cable run?
-  4. Resolution — 1080p or 4K60?
+  3. What's the longest single cable run from the rack to any display? Ask in FEET.
+     Always ask for the worst-case (longest) run — gear is selected for that distance.
+     Chips: ["Under 30ft", "30–100ft", "100–200ft", "Over 200ft"]
+  4. Resolution — 1080p or 4K?
   → Trigger search when all 4 are known.
 
 PTZ camera (production / worship):
@@ -118,7 +120,7 @@ Examples:
   - inputs: ["2", "4", "6", "8 or more"]
   - outputs: ["2-4", "5-8", "9-16", "More than 16"]
   - resolution: ["1080p is fine", "4K60 required"]
-  - distance: ["Under 10m", "10–30m", "30–100m", "Over 100m"]
+  - distance (always in feet): ["Under 30ft", "30–100ft", "100–200ft", "Over 200ft"]
   - zoom: ["12x (small room)", "20x (medium room)", "30x (large venue)"]
   - signal: ["HDMI", "SDI", "NDI (IP network)", "USB (for video calls)"]
 
@@ -224,11 +226,15 @@ def run_chat_turn(
     if intent.get("resolution"):
         state_update["resolution"] = _normalise_res(intent["resolution"])
     if intent.get("distance_m"):
+        import re as _re
         raw_dist = intent["distance_m"]
         if isinstance(raw_dist, str):
-            import re as _re
-            nums = [int(x) for x in _re.findall(r'\d+', raw_dist)]
-            raw_dist = max(nums) if nums else None
+            # detect feet: "30ft", "100 ft", "30-100ft", "under 30ft"
+            is_feet = bool(_re.search(r'ft|feet|\'', raw_dist, _re.I))
+            nums = [float(x) for x in _re.findall(r'[\d.]+', raw_dist)]
+            val = max(nums) if nums else None
+            if val is not None:
+                raw_dist = int(val * 0.3048) if is_feet else int(val)
         if raw_dist:
             state_update["max_distance_m"] = int(raw_dist)
     if intent.get("signal_type"):
