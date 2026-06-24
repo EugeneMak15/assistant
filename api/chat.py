@@ -224,7 +224,13 @@ def run_chat_turn(
     if intent.get("resolution"):
         state_update["resolution"] = _normalise_res(intent["resolution"])
     if intent.get("distance_m"):
-        state_update["max_distance_m"] = intent["distance_m"]
+        raw_dist = intent["distance_m"]
+        if isinstance(raw_dist, str):
+            import re as _re
+            nums = [int(x) for x in _re.findall(r'\d+', raw_dist)]
+            raw_dist = max(nums) if nums else None
+        if raw_dist:
+            state_update["max_distance_m"] = int(raw_dist)
     if intent.get("signal_type"):
         state_update["signal_type"] = intent["signal_type"]
     if intent.get("zoom"):
