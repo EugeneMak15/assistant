@@ -23,6 +23,7 @@ const { chromium } = require('playwright');
       { id: 'BG-ADAMO-4KND12X-B', product_url: 'https://example.com/black', price_usd: 1000 },
       { id: 'BG-ADAMO-4KND12X-W', product_url: 'https://example.com/white', price_usd: 1000 },
       { id: 'BG-ADAMO-4KND25X-B', product_url: 'https://example.com/zoom', price_usd: 1200 },
+      { id: 'BG-ADAMO-4KND31X-W-31', product_url: 'https://example.com/zoom31', price_usd: 1400 },
     ];
     await page.evaluate((variants) => {
       for (const variant of variants) {
@@ -35,10 +36,10 @@ const { chromium } = require('playwright');
     }, variants);
     const cards = page.locator('.product-card');
     assert.equal(await cards.count(), 1);
-    assert.match(await cards.first().innerText(), /12×, 25×/);
+    assert.match(await cards.first().innerText(), /12×, 25×, 31×/);
     assert.match(await cards.first().innerText(), /black, white/);
-    assert.equal(await cards.first().locator('details a').count(), 3);
-    console.log('Camera series UI: 1 card, 3 linked configurations, zoom and colors shown');
+    assert.equal(await cards.first().locator('details a').count(), 4);
+    console.log('Camera series UI: 1 card, 4 linked configurations, zoom and colors shown');
   } finally {
     await browser.close();
   }

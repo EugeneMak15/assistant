@@ -1842,9 +1842,10 @@ function startStreamingRecommendation(sid) {
 
   function cameraSeriesKey(sku) {
     return sku.toUpperCase()
+      .replace(/-31$/, '')
       .replace(/-(B|W|S|G)$/, '')
       .replace(/\d{1,2}X(?=-|$)/, 'ZX')
-      .replace(/-(10|12|20|25|30)(?=HSU|HSP|X)/, '-Z');
+      .replace(/-(10|12|20|25|30|31)(?=HSU|HSP|X)/, '-Z');
   }
 
   function addCameraVariant(p, tier) {
@@ -1894,7 +1895,7 @@ function startStreamingRecommendation(sid) {
       group.details.appendChild(link);
     }
     const zooms = [...new Set(group.variants.map(v => v.id.match(/(\d{1,2})X/i)?.[1]).filter(Boolean))].sort((a,b) => +a - +b);
-    const colors = [...new Set(group.variants.map(v => ({B:'black', W:'white', S:'silver', G:'gray'})[v.id.match(/-(B|W|S|G)$/i)?.[1]?.toUpperCase()]).filter(Boolean))];
+    const colors = [...new Set(group.variants.map(v => ({B:'black', W:'white', S:'silver', G:'gray'})[v.id.match(/-(B|W|S|G)(?:-31)?$/i)?.[1]?.toUpperCase()]).filter(Boolean))];
     group.summary.textContent = [zooms.length ? `Zoom: ${zooms.map(z => z + '×').join(', ')}` : '', colors.length ? `Colors: ${colors.join(', ')}` : ''].filter(Boolean).join(' · ');
     group.toggle.textContent = `View ${group.variants.length} configuration${group.variants.length === 1 ? '' : 's'}`;
     return isNewGroup;

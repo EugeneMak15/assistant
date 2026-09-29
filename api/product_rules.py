@@ -23,7 +23,7 @@ def requirement_text(question: str = "", answers: dict | None = None, plan: dict
 
 def requested_video(text: str) -> tuple[bool, bool]:
     """Return explicit 8K and 4K120 requirements (not generic 4K)."""
-    return bool(re.search(r"\b8\s*k\b", text, re.I)), bool(
+    return bool(re.search(r"\b8\s*k(?:\b|(?=\d))", text, re.I)), bool(
         re.search(r"\b4\s*k\s*(?:@|/|at)?\s*120\b", text, re.I)
     )
 
@@ -39,6 +39,14 @@ def requested_ports(text: str) -> tuple[int | None, int | None]:
     outputs = re.search(r"\b(\d{1,2})\s*(?:tvs?|displays?|screens?|outputs?|монитор\w*|экран\w*|телевизор\w*)\b", text, re.I)
     one_display = bool(re.search(r"\b(?:one|single|один|одно|одного)\s+(?:tv|display|screen|телевизор\w*|экран\w*)\b", text, re.I))
     return int(inputs.group(1)) if inputs else None, int(outputs.group(1)) if outputs else (1 if one_display else None)
+
+
+def requested_distance_m(text: str) -> float | None:
+    match = re.search(r"\b(\d+(?:\.\d+)?)\s*(km|kilometers?|met(?:er|re)s?|m|ft|feet)\b", text, re.I)
+    if not match:
+        return None
+    value, unit = float(match.group(1)), match.group(2).lower()
+    return value * (1000 if unit.startswith("k") else 0.3048 if unit in {"ft", "feet"} else 1)
 
 
 def _json_list(value) -> list:
@@ -63,8 +71,13 @@ def hard_mismatch(product: dict, interface: dict | None, text: str, categories: 
         return "medical-only camera outside a medical scenario"
 
     need_8k, need_4k120 = requested_video(text)
-    need_4k = bool(re.search(r"\b4\s*k\b", text, re.I))
+    need_4k = bool(re.search(r"\b4\s*k(?:\b|(?=\d))", text, re.I))
     need_4k60 = bool(re.search(r"\b4\s*k\s*(?:@|/|at)?\s*60\b", text, re.I))
+    if (product.get("category") == "capture" and (need_8k or need_4k120)
+            and re.search(r"\b(?:capture|record|stream)\b", text, re.I)
+            and not re.search(r"\b(?:input|loop.?out|pass.?through)\b", text, re.I)):
+        if (interface.get("max_res") or "").upper() not in ({"8K60", "8K30"} if need_8k else {"4K120", "8K30", "8K60"}):
+            return "capture output resolution is below the requested format"
     video_device = not cats or any(term in cats for term in ("switch", "matrix", "camera", "encoder", "decoder", "extender", "av over ip"))
     if video_device and need_8k:
         evidence = name + " " + " ".join(_json_list(product.get("features"))).lower()
@@ -93,6 +106,11 @@ def hard_mismatch(product: dict, interface: dict | None, text: str, categories: 
     if "encoder" in cats and product.get("category") != "encoder_decoder":
         return "dedicated streaming encoder required"
 
+    if "extender" in cats or product.get("category") == "extender":
+        distance = requested_distance_m(text)
+        if distance and (product.get("max_distance_m") or 0) < distance:
+            return "insufficient extension distance"
+
     if "switcher" in cats or "matrix" in cats:
         if product.get("category") not in {"switcher", "presentation_switcher"}:
             return "wrong switcher category"
@@ -118,18 +136,21 @@ def rank_product(product: dict, interface: dict | None, text: str) -> tuple:
     """Prefer the closest port count after hard requirements pass."""
     interface = interface or {}
     inputs, outputs = requested_ports(text)
+    distance = requested_distance_m(text)
     return (
         max(0, (interface.get("out_hdmi_count") or 0) - outputs) if outputs else 0,
         max(0, (interface.get("in_hdmi_count") or 0) - inputs) if inputs else 0,
+        max(0, (product.get("max_distance_m") or 0) - distance) if distance else 0,
         product.get("price_usd") or 0,
     )
 
 
 def camera_family_key(sku: str) -> str:
     """Keep signal/technology suffixes while collapsing zoom and color variants."""
+    sku = re.sub(r"-31$", "", sku.upper())
     sku = re.sub(r"-(B|W|S|G)$", "", sku.upper())
     sku = re.sub(r"\d{1,2}X(?=-|$)", "ZX", sku)
-    return re.sub(r"-(10|12|20|25|30)(?=HSU|HSP|X)", "-Z", sku)
+    return re.sub(r"-(10|12|20|25|30|31)(?=HSU|HSP|X)", "-Z", sku)
 
 
 def camera_family_variants(conn, sku: str) -> list[dict]:
