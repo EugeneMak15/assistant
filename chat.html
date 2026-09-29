@@ -737,17 +737,18 @@ const API = '';
 let sessionId = null;
 let lastRecommendationText = null;
 
-// ─── Smart scroll: only auto-scroll if user is already near the bottom ──────
-// Prevents the view from yanking back down while the user is scrolling up to read.
-function isNearBottom(el, threshold = 120) {
-  return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
-}
-function scrollToBottom(force = false) {
+// Keep the newest message and streamed search results in view.
+let scrollFramePending = false;
+function scrollToBottom() {
   const chat = document.getElementById('chat');
   if (!chat) return;
-  if (force || isNearBottom(chat)) {
+  chat.scrollTop = chat.scrollHeight;
+  if (scrollFramePending) return;
+  scrollFramePending = true;
+  requestAnimationFrame(() => {
     chat.scrollTop = chat.scrollHeight;
-  }
+    scrollFramePending = false;
+  });
 }
 
 // ─── Language detection & UI strings ──────────────────────────────────────
@@ -1115,9 +1116,7 @@ function addMessage(text, role = 'bot') {
   div.appendChild(body);
 
   chat.appendChild(div);
-  // Force-scroll when the user sends a message (they expect to follow their own input);
-  // for bot messages, respect the user's scroll position.
-  scrollToBottom(role === 'user');
+  scrollToBottom();
   return div;
 }
 
@@ -1821,6 +1820,8 @@ function startStreamingRecommendation(sid) {
 
   chat.appendChild(wrapper);
   scrollToBottom();
+  const streamResizeObserver = new ResizeObserver(scrollToBottom);
+  streamResizeObserver.observe(wrapper);
 
   let fullText = '';
   let perfectCount = 0;
@@ -1960,6 +1961,7 @@ function startStreamingRecommendation(sid) {
 
     else if (msg.type === 'done') {
       es.close();
+      streamResizeObserver.disconnect();
       bar.remove();
       const total = perfectCount + partialCount;
       cardsLabel.innerHTML = renderText(t('found_final', total));
@@ -1984,13 +1986,15 @@ function startStreamingRecommendation(sid) {
         inner.appendChild(pdf);
       }
 
-      chat.scrollTop = chat.scrollHeight;
+      scrollToBottom();
     }
   };
 
   es.onerror = () => {
     es.close();
+    streamResizeObserver.disconnect();
     bar.innerHTML = t('error_rec');
+    scrollToBottom();
   };
 }
 
