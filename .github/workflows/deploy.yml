@@ -22,4 +22,4 @@ jobs:
             /opt/assistant/venv/bin/python audit_catalog_specs.py --db products.db --apply --backup-dir _backup_predeploy
             systemctl restart bzb-assistant.service
             systemctl is-active --quiet bzb-assistant.service
-            curl --fail --silent --show-error --retry 5 --retry-delay 2 http://127.0.0.1:8000/health
+            curl --fail --silent --show-error --retry 10 --retry-delay 2 --retry-connrefused http://127.0.0.1:8000/health
