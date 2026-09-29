@@ -19,7 +19,7 @@ Hybrid — "hybrid":
   Customer named specific categories AND a venue/context.
   Treated as Flow A, venue used only as context for specs.
 """
-import os, json
+import os, json, re
 from openai import OpenAI
 
 PLANNER_SYSTEM = """You are a senior AV systems consultant with 20 years of experience.
@@ -940,6 +940,20 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
     resolution_filter: str | None = None
     needs_ndi:   bool = False
     needs_dante: bool = False
+    # The initial request can already specify the technology and zoom; answers
+    # below may refine or explicitly override those first-pass requirements.
+    question_low = question.lower()
+    if re.search(r"\bndi\b", question_low):
+        needs_ndi = True
+    if re.search(r"\bdante\b", question_low):
+        needs_dante = True
+    question_zoom = re.search(r"\b(10|12|20|25|30|31)\s*x\b", question_low)
+    if question_zoom:
+        zoom_filter = question_zoom.group(1) + "x"
+    if re.search(r"\b4\s*k\s*60\b", question_low):
+        resolution_filter = "4K60"
+    elif re.search(r"\b4\s*k\b", question_low):
+        resolution_filter = "4K"
     for q, a in answers.items():
         q_low, a_low = q.lower(), str(a).lower()
         if any(w in q_low for w in ("signal", "сигнал", "output", "interface", "type")):

@@ -36,7 +36,11 @@ def _load(path: str, fallback: str = "") -> str:
         return fallback
 
 AV_KNOWLEDGE  = _load("av_knowledge.md",   "(av_knowledge.md not found)")
-CATALOG_INDEX = _load("catalog_index.txt", "(catalog_index.txt not found — run build_catalog_index.py)")
+try:
+    from build_catalog_index import build_index_text
+    CATALOG_INDEX = build_index_text(str(_BASE / "products.db"))
+except (OSError, ValueError):
+    CATALOG_INDEX = _load("catalog_index.txt", "(catalog_index.txt not found — run build_catalog_index.py)")
 
 
 SYSTEM_PROMPT = f"""You are an expert AV systems integrator for BZB Gear — a professional AV equipment company.

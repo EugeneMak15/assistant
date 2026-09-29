@@ -8,7 +8,7 @@ Format per product:
 Grouped by category with headers.
 Run: python build_catalog_index.py
 """
-import sys; sys.stdout.reconfigure(encoding='utf-8')
+import sys
 import sqlite3, json
 from pathlib import Path
 from collections import defaultdict
@@ -151,8 +151,9 @@ def product_line(p: dict) -> str:
     return "  " + "  ".join(parts)
 
 
-def main():
-    conn = sqlite3.connect(DB_PATH)
+def build_index_text(db_path: str = DB_PATH) -> str:
+    """Build the catalog prompt from the current database, including new SKUs."""
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     rows = conn.execute(
         "SELECT * FROM products WHERE (site_category IS NULL OR site_category != 'Discontinued') ORDER BY category, id"
@@ -190,18 +191,24 @@ def main():
                 lines.append(product_line(p))
             lines.append("")
 
-    text = "\n".join(lines)
+    return "\n".join(lines)
+
+
+def main():
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    text = build_index_text()
     Path(OUT_PATH).write_text(text, encoding="utf-8")
 
     # Stats
     tokens_est = len(text) // 4
     print(f"Written: {OUT_PATH}")
-    print(f"Lines:   {len(lines)}")
+    print(f"Lines:   {len(text.splitlines())}")
     print(f"Chars:   {len(text):,}")
     print(f"Tokens:  ~{tokens_est:,} (estimated)")
     print()
     print("Preview (first 20 lines):")
-    for l in lines[:20]:
+    for l in text.splitlines()[:20]:
         print(l)
 
 

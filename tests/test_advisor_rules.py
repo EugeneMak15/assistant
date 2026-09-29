@@ -13,7 +13,7 @@ except ImportError:
     sys.modules["openai"] = types.SimpleNamespace(OpenAI=object)
 
 from api.scenario_planner import _find_matching_skus_for_flow_a
-from api.product_rules import camera_family_variants
+from api.product_rules import camera_family_key, camera_family_variants, hard_mismatch, requested_video
 from api import db
 
 
@@ -91,6 +91,36 @@ class AdvisorRulesTests(unittest.TestCase):
         self.assertIn("BG-ADAMO-4KND12X-W", skus)
         self.assertIn("BG-ADAMO-4KND25X-B", skus)
         self.assertNotIn("BG-ADAMO-4KDA12X-B", skus)
+
+    def test_new_31x_camera_joins_existing_family(self):
+        self.assertEqual(
+            camera_family_key("BG-ADAMO-4KND31X-W-31"),
+            camera_family_key("BG-ADAMO-4KND25X-B"),
+        )
+
+    def test_feed_aliases_are_not_duplicate_products(self):
+        from sync_catalog_feed import _camera_alias, _base_interface, PROFILES
+
+        self.assertTrue(_camera_alias("BG-ADAMO-4KND25X-W-31", {"BG-ADAMO-4KND25X-W"}))
+        self.assertFalse(_camera_alias("BG-ADAMO-4KND31X-W-31", {"BG-ADAMO-4KND25X-W"}))
+        capture = _base_interface("BG-8KCH", PROFILES["BG-8KCH"])
+        self.assertEqual(capture["max_res"], "4K60")
+        self.assertIn("USB capture output is limited to 4K60", capture["notes"])
+        product = {"id": "BG-8KCH", "name": "8K input / 4K capture card", "category": "capture"}
+        self.assertEqual(
+            hard_mismatch(product, capture, "Need an 8K capture card", ["capture"]),
+            "capture output resolution is below the requested format",
+        )
+
+    def test_8k60_and_extension_distance_are_hard_requirements(self):
+        self.assertEqual(requested_video("Need 8K60 video"), (True, False))
+        product = {"id": "BG-EXH-8K50C", "name": "8K60 HDMI extender", "category": "extender",
+                   "features": '["8K60"]', "max_distance_m": 50}
+        interface = {"supports_8k": 1, "supports_4k": 1, "max_res": "8K60"}
+        self.assertEqual(
+            hard_mismatch(product, interface, "need 8K60 over 100 meters", ["extender"]),
+            "insufficient extension distance",
+        )
 
 
 if __name__ == "__main__":
