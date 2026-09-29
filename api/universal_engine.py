@@ -14,6 +14,7 @@ It reads the full catalog and selects appropriate products itself.
 import os, json, re
 from pathlib import Path
 from openai import OpenAI
+from .usage import record_usage
 
 _CYRILLIC = re.compile(r'[а-яёА-ЯЁ]')
 _CJK      = re.compile(r'[一-鿿぀-ヿ]')
@@ -404,6 +405,7 @@ def get_relevant_context(query: str, candidate_skus: list[str] = None) -> str:
 def _embed(text: str) -> list[float]:
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
     resp = client.embeddings.create(model="text-embedding-3-small", input=[text])
+    record_usage(resp)
     return resp.data[0].embedding
 
 
@@ -468,6 +470,7 @@ def _pass1_select_skus(question: str, session_info: dict) -> list[str]:
         response_format={"type": "json_object"},
         temperature=0,
     )
+    record_usage(resp)
 
     try:
         data = json.loads(resp.choices[0].message.content)
@@ -788,11 +791,11 @@ def _sanity_filter_candidates(
 
     try:
         client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-        # 40s timeout — gpt-5.5 reasoning can be slow on large candidate lists;
+        # 40s timeout — reasoning can be slow on large candidate lists;
         # on timeout we fall back to unfiltered candidates (see except below)
         # rather than freezing the chat for minutes.
         resp = client.chat.completions.create(
-            model="gpt-5.5",
+            model="gpt-5.6-sol",
             messages=[
                 {"role": "system", "content": SANITY_FILTER_SYSTEM},
                 {"role": "user",   "content": user_msg},
@@ -801,6 +804,7 @@ def _sanity_filter_candidates(
             reasoning_effort="low",  # KEEP/REMOVE classification — no deep reasoning needed; cuts latency
             timeout=40,
         )
+        record_usage(resp)
         data = json.loads(resp.choices[0].message.content)
         perfect_raw = data.get("perfect", [])
         partial_raw = data.get("partial", [])
@@ -1084,12 +1088,13 @@ def get_flow_a_recommendation(
 
     scenario_type = (plan or {}).get("scenario_type", "")
     resp = client.chat.completions.create(
-        model="gpt-5.5",
+        model="gpt-5.6-sol",
         messages=[
             {"role": "system", "content": _build_flow_a_system(scenario_type)},
             {"role": "user",   "content": user_message},
         ],
     )
+    record_usage(resp)
 
     answer = resp.choices[0].message.content
     found_skus = sorted(set(_SKU_RE.findall(answer.upper())))
@@ -1194,15 +1199,20 @@ def stream_flow_a_recommendation(
 
     scenario_type = (plan or {}).get("scenario_type", "")
     stream = client.chat.completions.create(
-        model="gpt-5.5",
+        model="gpt-5.6-sol",
         messages=[
             {"role": "system", "content": _build_flow_a_system(scenario_type)},
             {"role": "user",   "content": user_message},
         ],
         stream=True,
+        stream_options={"include_usage": True},
     )
 
     for chunk in stream:
+        if chunk.usage:
+            record_usage(chunk)
+        if not chunk.choices:
+            continue
         delta = chunk.choices[0].delta.content or ""
         if delta:
             yield ("text", delta)
@@ -1265,12 +1275,13 @@ Verify signal compatibility at every link and show the complete chain.
 {_detect_language(question)}"""
 
     resp = client.chat.completions.create(
-        model="gpt-5.5",
+        model="gpt-5.6-sol",
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user",   "content": user_message},
         ],
     )
+    record_usage(resp)
 
     answer = resp.choices[0].message.content
     if not medical_context and "BG-NUTRIX" in answer.upper():

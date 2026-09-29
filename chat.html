@@ -102,6 +102,16 @@
   }
   #session-badge .sid-copy:hover { background: var(--surface-2); color: var(--blue); }
   #session-badge .sid-copy.copied { color: var(--green); }
+  #session-cost {
+    display: none; align-items: center; gap: 5px;
+    padding: 5px 8px; border: 1px solid var(--border);
+    border-radius: 7px; font-size: 11px; color: var(--text-3);
+    white-space: nowrap;
+  }
+  #session-cost-value {
+    color: var(--text); font-family: 'SF Mono', 'Fira Code', monospace;
+    font-weight: 600;
+  }
 
   /* ── Chat area ── */
   #chat {
@@ -689,6 +699,9 @@
     <span class="sid-val" id="sid-val"></span>
     <button class="sid-copy" id="sid-copy" title="Copy session ID">⎘</button>
   </div>
+  <div id="session-cost" title="Estimated OpenAI API cost for this session, based on reported token usage; not an invoice.">
+    <span>Session ≈</span><span id="session-cost-value">$0.00000</span>
+  </div>
   <button class="debug-btn" onclick="openSessionsPanel()">Sessions</button>
   <button id="new-chat" onclick="resetChat()">+ New chat</button>
 </header>
@@ -736,6 +749,36 @@
 const API = '';
 let sessionId = null;
 let lastRecommendationText = null;
+let costRefreshTimer = null;
+
+async function refreshSessionCost() {
+  const sid = sessionId;
+  if (!sid) return;
+  try {
+    const res = await fetch(`${API}/chat/usage/${encodeURIComponent(sid)}`, {cache: 'no-store'});
+    if (!res.ok) return;
+    const usage = await res.json();
+    if (sessionId !== sid) return;
+    document.getElementById('session-cost-value').textContent =
+      '$' + Number(usage.estimated_cost_usd || 0).toFixed(5);
+    if (usage.unpriced_requests) {
+      document.getElementById('session-cost').title =
+        'Partial estimate: some API calls have no known price. Not an invoice.';
+    }
+  } catch (_) { /* The cost indicator must never interrupt the chat. */ }
+}
+
+function startCostPolling() {
+  if (costRefreshTimer) clearInterval(costRefreshTimer);
+  refreshSessionCost();
+  costRefreshTimer = setInterval(refreshSessionCost, 1500);
+}
+
+function stopCostPolling(refresh = true) {
+  if (costRefreshTimer) clearInterval(costRefreshTimer);
+  costRefreshTimer = null;
+  if (refresh) refreshSessionCost();
+}
 
 // Keep the newest message and streamed search results in view.
 let scrollFramePending = false;
@@ -927,7 +970,7 @@ async function loadDiagram(recText, container) {
     const res = await fetch(`${API}/diagram`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recommendation: recText }),
+      body: JSON.stringify({ recommendation: recText, session_id: sessionId }),
     });
     const data = await res.json();
 
@@ -945,6 +988,8 @@ async function loadDiagram(recText, container) {
     await renderMermaid(mermaidCode, container);
   } catch(e) {
     container.innerHTML = `<div style="padding:16px;color:#f87171;font-size:12px">Error: ${e.message}</div>`;
+  } finally {
+    refreshSessionCost();
   }
 }
 
@@ -1762,6 +1807,7 @@ async function sendMessage() {
     hideTyping();
     addMessage('Connection interrupted. Your chat is still here — please try again.', 'bot');
   }
+  refreshSessionCost();
   document.getElementById('send').disabled = false;
   input.focus();
 }
@@ -1769,6 +1815,7 @@ async function sendMessage() {
 // ─── SSE streaming recommendation ─────────────────────────────────────────
 function startStreamingRecommendation(sid) {
   const chat = document.getElementById('chat');
+  startCostPolling();
 
   // Container for this whole recommendation block
   const wrapper = document.createElement('div');
@@ -1961,6 +2008,7 @@ function startStreamingRecommendation(sid) {
 
     else if (msg.type === 'done') {
       es.close();
+      stopCostPolling();
       streamResizeObserver.disconnect();
       bar.remove();
       const total = perfectCount + partialCount;
@@ -1992,6 +2040,7 @@ function startStreamingRecommendation(sid) {
 
   es.onerror = () => {
     es.close();
+    stopCostPolling();
     streamResizeObserver.disconnect();
     bar.innerHTML = t('error_rec');
     scrollToBottom();
@@ -2012,10 +2061,15 @@ function updateSessionBadge(sid) {
   const badge = document.getElementById('session-badge');
   const val   = document.getElementById('sid-val');
   const btn   = document.getElementById('sid-copy');
-  if (!sid) { badge.style.display = 'none'; return; }
+  if (!sid) {
+    badge.style.display = 'none';
+    document.getElementById('session-cost').style.display = 'none';
+    return;
+  }
   val.textContent = sid.slice(0, 8) + '…';
   val.title = sid;
   badge.style.display = 'flex';
+  document.getElementById('session-cost').style.display = 'flex';
   btn.onclick = () => {
     navigator.clipboard.writeText(sid).then(() => {
       btn.textContent = '✓';
@@ -2031,6 +2085,10 @@ async function init(silent = false) {
     const data = await res.json();
     sessionId = data.session?.session_id;
     updateSessionBadge(sessionId);
+    document.getElementById('session-cost-value').textContent = '$0.00000';
+    document.getElementById('session-cost').title =
+      'Estimated OpenAI API cost for this session, based on reported token usage; not an invoice.';
+    refreshSessionCost();
     if (!silent) {
       if (data.message) addMessage(data.message, 'bot');
       if (data.chips?.length) showChips(data.chips);
@@ -2043,7 +2101,9 @@ async function init(silent = false) {
 }
 
 async function resetChat() {
+  stopCostPolling(false);
   sessionId = null;
+  updateSessionBadge(null);
   lastRecommendationText = null;
   document.getElementById('chat').innerHTML = '';
   clearChips();

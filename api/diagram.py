@@ -4,6 +4,7 @@ Returns nodes + connections that the frontend renders as SVG.
 """
 import os, json
 from openai import OpenAI
+from .usage import record_usage
 
 DIAGRAM_PROMPT = """You are extracting a signal-chain diagram from an AV system recommendation.
 
@@ -51,6 +52,7 @@ def extract_diagram(recommendation: str) -> dict:
         response_format={"type": "json_object"},
         temperature=0,
     )
+    record_usage(resp)
 
     try:
         return json.loads(resp.choices[0].message.content)

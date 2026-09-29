@@ -5,6 +5,7 @@ import os
 import json
 from pathlib import Path
 from .models import Product, ManualChunk
+from .usage import record_usage
 
 # Load AV knowledge base once at import time
 _KB_PATH = Path(__file__).parent.parent / "av_knowledge.md"
@@ -152,4 +153,5 @@ Apply the AV Knowledge Base rules to verify compatibility at every link."""
         # o4-mini uses reasoning_effort instead of temperature
         reasoning_effort="high",
     )
+    record_usage(resp)
     return resp.choices[0].message.content

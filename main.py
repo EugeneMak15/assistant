@@ -26,8 +26,10 @@ from api.universal_engine import get_universal_recommendation, get_flow_a_recomm
 from api.chat import run_chat_turn, get_opening_message
 from api.chain import build_chain, chain_to_text
 from api.db import get_conn, row_to_dict, init_chat_state_table, save_chat_state, load_chat_state
+from api.usage import init_usage_table, track_session, get_session_usage
 
 init_chat_state_table()
+init_usage_table()
 
 app = FastAPI(
     title="BZB Gear AI Equipment Advisor",
@@ -184,6 +186,11 @@ def recommend(body: RecommendRequest):
     Requires OPENAI_API_KEY in environment.
     Layer 2 works only after ingest.py has been run.
     """
+    with track_session(body.session_id):
+        return _recommend(body)
+
+
+def _recommend(body: RecommendRequest):
     if not os.environ.get("OPENAI_API_KEY"):
         raise HTTPException(400, "OPENAI_API_KEY not set")
 
@@ -294,6 +301,11 @@ def chat_start():
 @app.post("/chat/message", response_model=ChatResponse, tags=["Chat"])
 def chat_message(body: ChatMessage):
     """Send a message and get AI response + chips. Runs full search when ready."""
+    with track_session(body.session_id):
+        return _chat_message(body)
+
+
+def _chat_message(body: ChatMessage):
     if not os.environ.get("OPENAI_API_KEY"):
         raise HTTPException(400, "OPENAI_API_KEY not set")
 
@@ -473,6 +485,12 @@ def chat_message(body: ChatMessage):
     )
 
 
+@app.get("/chat/usage/{session_id}", tags=["Chat"])
+def chat_usage(session_id: str):
+    """Estimated OpenAI token cost for one chat session."""
+    return get_session_usage(session_id)
+
+
 # ─── Debug ────────────────────────────────────────────────────────────────────
 
 @app.get("/debug/session/{session_id}", tags=["Debug"])
@@ -622,6 +640,21 @@ def stream_recommendation_sse(session_id: str):
     session_dict  = ctx["session_dict"]
 
     def generate():
+        events = generate_events()
+        try:
+            while True:
+                # StreamingResponse may resume this generator in a different
+                # worker context after each yield. Scope usage to each step.
+                with track_session(session_id):
+                    try:
+                        event = next(events)
+                    except StopIteration:
+                        return
+                yield event
+        finally:
+            events.close()
+
+    def generate_events():
         import json as _json
         from api.universal_engine import stream_flow_a_recommendation
 
@@ -751,6 +784,7 @@ def export_pdf(session_id: str):
 
 class DiagramRequest(BaseModel):
     recommendation: str
+    session_id: Optional[str] = None
 
 
 @app.post("/diagram", tags=["Chat"])
@@ -759,7 +793,8 @@ def generate_diagram_endpoint(body: DiagramRequest):
     if not os.environ.get("OPENAI_API_KEY"):
         raise HTTPException(400, "OPENAI_API_KEY not set")
     from api.diagram import extract_diagram
-    return extract_diagram(body.recommendation)
+    with track_session(body.session_id):
+        return extract_diagram(body.recommendation)
 
 
 # ─── DB stats ─────────────────────────────────────────────────────────────────

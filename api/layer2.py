@@ -4,6 +4,7 @@ import os
 import chromadb
 from .db import get_chroma
 from .models import ManualChunk
+from .usage import record_usage
 
 CHROMA_PATH = "./chroma_db"
 
@@ -12,6 +13,7 @@ def embed_query(text: str) -> list[float]:
     from openai import OpenAI
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
     resp = client.embeddings.create(model="text-embedding-3-small", input=[text])
+    record_usage(resp)
     return resp.data[0].embedding
 
 

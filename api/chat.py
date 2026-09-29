@@ -1,5 +1,5 @@
 """
-Chat engine — single gpt-5.5 AV consultant loop.
+Chat engine — single GPT-5.6 Sol AV consultant loop.
 
 The model acts as a human AV Sales Consultant / Installer.
 It converses naturally, asks exactly what it needs, and only
@@ -7,6 +7,7 @@ triggers product search when it has gathered enough data.
 """
 import os, json, math, re
 from openai import OpenAI
+from .usage import record_usage
 
 CONSULTANT_SYSTEM = """You are Alex, a senior AV Sales Consultant with 20 years of field installation experience.
 
@@ -291,7 +292,7 @@ def run_chat_turn(
 
     try:
         resp = client.chat.completions.create(
-            model="gpt-5.5",
+            model="gpt-5.6-sol",
             messages=messages,
             response_format={"type": "json_object"},
             timeout=40,
@@ -302,6 +303,7 @@ def run_chat_turn(
             raise RuntimeError("OPENAI_QUOTA_EXCEEDED")
         raise
 
+    record_usage(resp)
     raw = resp.choices[0].message.content
     try:
         data = json.loads(raw)
@@ -564,7 +566,7 @@ def run_followup_turn(history: list[dict], user_message: str, results: dict) -> 
 
     try:
         resp = client.chat.completions.create(
-            model="gpt-5.5",
+            model="gpt-5.6-sol",
             messages=messages,
             response_format={"type": "json_object"},
             reasoning_effort="low",
@@ -576,6 +578,7 @@ def run_followup_turn(history: list[dict], user_message: str, results: dict) -> 
             raise RuntimeError("OPENAI_QUOTA_EXCEEDED")
         raise
 
+    record_usage(resp)
     try:
         data = json.loads(resp.choices[0].message.content)
     except Exception:

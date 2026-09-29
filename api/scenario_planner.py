@@ -21,6 +21,7 @@ Hybrid — "hybrid":
 """
 import os, json, re
 from openai import OpenAI
+from .usage import record_usage
 
 PLANNER_SYSTEM = """You are a senior AV systems consultant with 20 years of experience.
 Analyze the customer's request, classify their intent, and generate appropriate equipment roles.
@@ -287,6 +288,7 @@ def analyze_scenario(user_message: str, conversation_history: list[dict] = None)
         response_format={"type": "json_object"},
         temperature=0,
     )
+    record_usage(resp)
 
     try:
         plan = json.loads(resp.choices[0].message.content)
@@ -333,6 +335,7 @@ def fetch_questions(plan: dict, user_message: str) -> list[dict]:
         response_format={"type": "json_object"},
         temperature=0,
     )
+    record_usage(resp)
     try:
         return json.loads(resp.choices[0].message.content).get("clarifying_questions", [])
     except Exception:
@@ -478,6 +481,7 @@ def extract_answers_from_freetext(text: str, questions: list[dict]) -> dict[int,
         response_format={"type": "json_object"},
         temperature=0,
     )
+    record_usage(resp)
 
     try:
         data = json.loads(resp.choices[0].message.content)
