@@ -521,7 +521,7 @@ def _find_matching_skus_via_interfaces(
     FN_MAP = {
         "matrix switcher":       ["matrix-switcher"],
         "video matrix":          ["matrix-switcher"],
-        "switcher":              ["matrix-switcher", "production-switcher"],
+        "switcher":              ["matrix-switcher"],
         "production switcher":   ["production-switcher"],
         "presentation switcher": ["matrix-switcher", "production-switcher"],
         "video wall":            ["matrix-switcher"],
@@ -808,7 +808,7 @@ def _find_matching_skus_via_interfaces(
     return _deduplicate_color_variants(list(iface_skus))
 
 
-def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dict) -> list[str]:
+def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dict, question: str = "") -> list[str]:
     """
     For Flow A: SQL-query ALL non-discontinued products that match the requested category
     and the customer's specs. These SKUs will be passed as mandatory to the LLM so it can't
@@ -823,7 +823,7 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
         merged: list[str] = []
         seen: set[str] = set()
         for cat in requested_categories:
-            for sku in _find_matching_skus_for_flow_a([cat], answers):
+            for sku in _find_matching_skus_for_flow_a([cat], answers, question):
                 if sku not in seen:
                     seen.add(sku)
                     merged.append(sku)
@@ -925,7 +925,7 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
                 max_outputs = max(int(a_low) * 2, 8)
 
     # Detect category type for specialised filtering
-    is_matrix = any("matrix" in c or "switcher" in c for c in requested_categories)
+    is_matrix = any("matrix" in c for c in requested_categories)
     is_camera = any("camera" in c for c in requested_categories)
     is_ptz_controller = any("controller" in c or "joystick" in c for c in requested_categories)
 
@@ -989,7 +989,7 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
         if _interfaces_table_ready():
             # Pass expanded db_cats so fast path also includes av_over_ip when needed
             expanded_cats = list(db_cats)
-            return _find_matching_skus_via_interfaces(
+            skus = _find_matching_skus_via_interfaces(
                 requested_categories=expanded_cats,
                 answers=answers,
                 min_inputs=min_inputs,
@@ -1004,6 +1004,9 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
                 needs_ndi=needs_ndi,
                 needs_dante=needs_dante,
             )
+            if is_camera and question and "BG-NUTRIX" not in skus:
+                skus.append("BG-NUTRIX")
+            return _filter_hard_requirements(skus, requested_categories, answers, question)
 
         # ── Legacy fallback: plain products table query ────────────────────────
         from api.db import get_conn
@@ -1072,10 +1075,31 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
         conn.close()
 
         skus = [row[0] for row in rows]
-        return _deduplicate_color_variants(skus)
+        return _filter_hard_requirements(_deduplicate_color_variants(skus), requested_categories, answers, question)
 
     except Exception:
         return []
+
+
+def _filter_hard_requirements(skus: list[str], categories: list[str], answers: dict, question: str) -> list[str]:
+    """Apply confirmed requirements before the LLM sees catalog candidates."""
+    from api.db import get_conn
+    from api.product_rules import hard_mismatch, rank_product, requirement_text
+
+    text = requirement_text(question, answers)
+    conn = get_conn()
+    eligible = []
+    for sku in skus:
+        row = conn.execute("SELECT * FROM products WHERE id=?", (sku,)).fetchone()
+        if not row:
+            continue
+        iface_row = conn.execute("SELECT * FROM product_interfaces WHERE sku=?", (sku,)).fetchone()
+        product = dict(row)
+        interface = dict(iface_row) if iface_row else None
+        if hard_mismatch(product, interface, text, categories) is None:
+            eligible.append((sku, rank_product(product, interface, text)))
+    conn.close()
+    return [sku for sku, _ in sorted(eligible, key=lambda item: item[1])]
 
 
 def _deduplicate_color_variants(skus: list[str]) -> list[str]:

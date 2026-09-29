@@ -290,6 +290,11 @@
     margin-top: auto; letter-spacing: -0.3px;
   }
   .product-card-stock { font-size: 10px; color: var(--text-3); }
+  .camera-series-summary { font-size: 11px; line-height: 1.45; color: var(--text-2); }
+  .camera-series-variants { margin-top: 5px; font-size: 11px; }
+  .camera-series-variants summary { cursor: pointer; color: var(--blue); font-weight: 600; }
+  .camera-series-variants a { display: block; color: var(--blue); padding: 4px 0; text-decoration: none; }
+  .camera-series-variants a:hover { text-decoration: underline; }
 
   /* ── Analyzing indicator ── */
   .analyzing-bar {
@@ -1833,6 +1838,67 @@ function startStreamingRecommendation(sid) {
   let fullText = '';
   let perfectCount = 0;
   let partialCount = 0;
+  const cameraGroups = new Map();
+
+  function cameraSeriesKey(sku) {
+    return sku.toUpperCase()
+      .replace(/-(B|W|S|G)$/, '')
+      .replace(/\d{1,2}X(?=-|$)/, 'ZX')
+      .replace(/-(10|12|20|25|30)(?=HSU|HSP|X)/, '-Z');
+  }
+
+  function addCameraVariant(p, tier) {
+    const key = `${tier}:${cameraSeriesKey(p.id)}`;
+    let group = cameraGroups.get(key);
+    const isNewGroup = !group;
+    if (!group) {
+      const card = document.createElement('div');
+      card.className = 'product-card' + (tier === 'partial' ? ' partial-card' : '');
+      if (p.image_url) {
+        const img = document.createElement('img');
+        img.className = 'product-card-img';
+        img.src = p.image_url;
+        img.alt = p.id;
+        img.loading = 'lazy';
+        img.onerror = () => img.replaceWith(makePlaceholder());
+        card.appendChild(img);
+      } else card.appendChild(makePlaceholder());
+      const body = document.createElement('div');
+      body.className = 'product-card-body';
+      const title = document.createElement('span');
+      title.className = 'product-card-sku';
+      title.textContent = cameraSeriesKey(p.id)
+        .replace(/ZX(?=-|$)/, '')
+        .replace(/-Z(?=HSU|HSP|X)/, '-') + ' series';
+      const summary = document.createElement('div');
+      summary.className = 'camera-series-summary';
+      const details = document.createElement('details');
+      details.className = 'camera-series-variants';
+      const toggle = document.createElement('summary');
+      details.appendChild(toggle);
+      body.append(title, summary, details);
+      card.appendChild(body);
+      (tier === 'partial' ? partialGrid : perfectGrid).appendChild(card);
+      group = { card, summary, details, toggle, variants: [] };
+      cameraGroups.set(key, group);
+    }
+    const variants = p.camera_variants?.length ? p.camera_variants : [p];
+    for (const variant of variants) {
+      if (group.variants.some(v => v.id === variant.id)) continue;
+      group.variants.push(variant);
+      const link = document.createElement('a');
+      link.href = variant.product_url || '#';
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = variant.id + (variant.price_usd ? ` · $${variant.price_usd.toLocaleString()}` : '');
+      group.details.appendChild(link);
+    }
+    const zooms = [...new Set(group.variants.map(v => v.id.match(/(\d{1,2})X/i)?.[1]).filter(Boolean))].sort((a,b) => +a - +b);
+    const colors = [...new Set(group.variants.map(v => ({B:'black', W:'white', S:'silver', G:'gray'})[v.id.match(/-(B|W|S|G)$/i)?.[1]?.toUpperCase()]).filter(Boolean))];
+    group.summary.textContent = [zooms.length ? `Zoom: ${zooms.map(z => z + '×').join(', ')}` : '', colors.length ? `Colors: ${colors.join(', ')}` : ''].filter(Boolean).join(' · ');
+    group.toggle.textContent = `View ${group.variants.length} configuration${group.variants.length === 1 ? '' : 's'}`;
+    return isNewGroup;
+  }
 
   function makeCard(p, tier) {
     const card = document.createElement('a');
@@ -1876,17 +1942,20 @@ function startStreamingRecommendation(sid) {
       const tier = msg.tier || 'perfect';
       if (p.id && p.product_url) skuUrlMap[p.id.toUpperCase()] = p.product_url;
       if (p.id && p.image_url)   skuImgMap[p.id.toUpperCase()] = p.image_url;
+      for (const variant of p.camera_variants || []) {
+        if (variant.id && variant.product_url) skuUrlMap[variant.id.toUpperCase()] = variant.product_url;
+      }
 
-      const card = makeCard(p, tier);
-
+      const isCamera = p.category === 'camera' && cameraSeriesKey(p.id) !== p.id.toUpperCase();
+      const isNewCard = isCamera ? addCameraVariant(p, tier) : true;
+      if (!isCamera) {
+        const card = makeCard(p, tier);
+        (tier === 'partial' ? partialGrid : perfectGrid).appendChild(card);
+      }
       if (tier === 'partial') {
         partialSection.style.display = 'block';
-        partialGrid.appendChild(card);
-        partialCount++;
-      } else {
-        perfectGrid.appendChild(card);
-        perfectCount++;
-      }
+        if (isNewCard) partialCount++;
+      } else if (isNewCard) perfectCount++;
 
       const total = perfectCount + partialCount;
       cardsLabel.innerHTML = renderText(total === 1 ? t('found_one', 1) : t('found_many', total));

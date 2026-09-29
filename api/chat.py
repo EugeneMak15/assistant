@@ -11,6 +11,8 @@ from openai import OpenAI
 CONSULTANT_SYSTEM = """You are Alex, a senior AV Sales Consultant with 20 years of field installation experience.
 
 YOUR JOB: Gather just enough info to find the right product, then trigger search. Keep it tight — 4-6 questions max.
+Keep each reply to one brief question or two short sentences. Product links provide the full specifications.
+BG-NUTRIX is a medical-only camera; consider it only when the customer explicitly describes a medical use.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 RULE #1 — ABSOLUTELY FORBIDDEN QUESTIONS (highest priority, no exceptions)
@@ -550,7 +552,7 @@ def run_followup_turn(history: list[dict], user_message: str, results: dict) -> 
 
 def get_opening_message() -> dict:
     return {
-        "message": "Hey! I'm Alex, your AV advisor. Tell me what you're trying to set up — whether it's a home theater, bar, conference room, or broadcast studio — and I'll find the right gear for you.",
+        "message": "Hi, I'm Alex. What AV equipment or setup do you need?",
         "chips": [
             "Home theater / living room",
             "Bar or restaurant",

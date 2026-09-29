@@ -407,7 +407,7 @@ def chat_message(body: ChatMessage):
         from api.scenario_planner import _find_matching_skus_for_flow_a
         if flow in ("product_selection", "hybrid"):
             categories = scenario_plan.get("requested_categories", [])
-            sql_skus = _find_matching_skus_for_flow_a(categories, scenario_answers)
+            sql_skus = _find_matching_skus_for_flow_a(categories, scenario_answers, search_query)
         else:
             semantic_hits = semantic_search_products(search_query, n=12)
             # Exclude AV-over-IP "controller" devices when searching for PTZ controllers
@@ -689,11 +689,18 @@ def stream_recommendation_sse(session_id: str):
                         "SELECT * FROM products WHERE id=? AND (site_category IS NULL OR site_category != 'Discontinued') AND (stock_status IS NULL OR stock_status NOT IN ('Discontinued', 'Limited Stock'))",
                         (sku,)
                     ).fetchone()
+                    variants = []
+                    if row and row["category"] == "camera":
+                        from api.product_rules import camera_family_variants
+                        variants = camera_family_variants(conn, sku)
                     conn.close()
                     if row:
                         p = Product(**row_to_dict(row))
                         collected_skus.append(sku.upper())
-                        yield f"data: {_json.dumps({'type': 'product', 'product': p.model_dump(), 'tier': tier})}\n\n"
+                        product_data = p.model_dump()
+                        if variants:
+                            product_data["camera_variants"] = variants
+                        yield f"data: {_json.dumps({'type': 'product', 'product': product_data, 'tier': tier})}\n\n"
                     else:
                         print(f"[SSE Flow A] sku {sku} not found in DB")
 

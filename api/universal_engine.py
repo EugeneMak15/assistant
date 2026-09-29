@@ -40,6 +40,9 @@ CATALOG_INDEX = _load("catalog_index.txt", "(catalog_index.txt not found — run
 
 
 SYSTEM_PROMPT = f"""You are an expert AV systems integrator for BZB Gear — a professional AV equipment company.
+Keep the answer under 180 words: one short reason per recommended device and a linkable SKU. Put detail behind product links.
+Present camera configurations as one model family with available zoom and color choices.
+BG-NUTRIX is a medical-only camera; never recommend it outside an explicitly medical scenario.
 
 You have three knowledge sources. Use ALL of them:
 
@@ -630,6 +633,12 @@ Match the technology to the actual scale and context. Think like an integrator w
 RULE 1 — WRONG DEVICE TYPE:
 Remove if the device's PRIMARY FUNCTION does not match what the customer asked for.
 
+  Customer wants a SWITCHER with one display / 4x1 layout:
+    ✓ KEEP: N-to-1 HDMI selectors with enough inputs and the requested resolution.
+    ✓ KEEP: a small matrix with a spare second output if useful.
+    ✗ REMOVE: KVM switches, multiviewers, presentation scalers unless explicitly requested.
+    Do not infer a two-output matrix from the generic word "switcher".
+
   Customer wants MATRIX SWITCHER (routes any of N inputs to any of M outputs simultaneously):
     ✗ REMOVE: Streaming/production switchers (BG-QUADFUSION-4K = mixer, NOT a router)
     ✗ REMOVE: Capture cards, encoders, recorders
@@ -716,33 +725,42 @@ def _sanity_filter_candidates(
     requested_categories: list[str],
     answers: dict,
     plan: dict,
+    question: str = "",
 ) -> tuple[list[str], list[str]]:
     """
     Layer 1+2 LLM filter: remove wrong-function products and overkill technology.
-    Returns (perfect_skus, partial_skus) — always at least 1 item in perfect.
+    Returns (perfect_skus, partial_skus). Hard mismatches are never shown.
     """
-    if len(candidate_skus) <= 1:
-        return candidate_skus, []  # single product — no point filtering
-
     from api.db import get_conn, row_to_dict as _row_to_dict
-    from api.db_interfaces import get_interface
+    from api.product_rules import hard_mismatch, rank_product, requirement_text
+
+    requirement = requirement_text(question, answers, plan)
 
     # Build full product context (same as FLOW_A sees) so filter can read actual specs/features
     conn = get_conn()
     products = []
+    eligible = []
     for sku in candidate_skus:
         row = conn.execute("SELECT * FROM products WHERE id=?", (sku,)).fetchone()
         if row:
-            products.append(_row_to_dict(row))
+            product = _row_to_dict(row)
+            interface_row = conn.execute("SELECT * FROM product_interfaces WHERE sku=?", (sku,)).fetchone()
+            interface = dict(interface_row) if interface_row else None
+            if hard_mismatch(product, interface, requirement, requested_categories) is None:
+                eligible.append((sku, rank_product(product, interface, requirement)))
+                products.append(product)
     conn.close()
 
     if not products:
+        return [], []
+    candidate_skus = [sku for sku, _ in sorted(eligible, key=lambda item: item[1])]
+    if len(candidate_skus) == 1:
         return candidate_skus, []
 
     product_context = _build_product_context(products)
 
     # Build context from answers
-    req_lines = [f"Category requested: {', '.join(requested_categories)}"]
+    req_lines = [f"Category requested: {', '.join(requested_categories)}", f"Customer request: {question}"]
     hard_constraints = []
     for q, a in answers.items():
         req_lines.append(f"{q}: {a}")
@@ -764,8 +782,8 @@ def _sanity_filter_candidates(
         "\n\nApply the filter rules and return JSON."
     )
 
-    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
     try:
+        client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
         # 40s timeout — gpt-5.5 reasoning can be slow on large candidate lists;
         # on timeout we fall back to unfiltered candidates (see except below)
         # rather than freezing the chat for minutes.
@@ -796,18 +814,20 @@ def _sanity_filter_candidates(
         original_set = set(candidate_skus)
         perfect = [s for s in perfect_raw if s in original_set]
         partial = [s for s in partial_raw if s in original_set]
-        # Never return empty — fall back to original if filter went wrong
+        # Keep eligible options if the optional classifier returns no labels.
         if not perfect and not partial:
-            return candidate_skus, []
+            return [], candidate_skus
 
         # ── Python-level hard rules (override LLM classification) ──────────
         perfect, partial = _apply_hard_feature_rules(
             perfect, partial, answers, plan, conn_ref=None
         )
 
-        return perfect, partial
+        order = {sku: index for index, sku in enumerate(candidate_skus)}
+        return sorted(perfect, key=order.get), sorted(partial, key=order.get)
     except Exception:
-        return candidate_skus, []
+        # Preserve hard filtering even when the optional LLM classifier fails.
+        return [], candidate_skus
 
 
 def _apply_hard_feature_rules(
@@ -822,7 +842,7 @@ def _apply_hard_feature_rules(
     Checks explicit feature requirements against product names/descriptions.
     More reliable than LLM for simple keyword checks.
     """
-    from api.db import get_conn, row_to_dict as _row_to_dict
+    from api.db import get_conn
 
     # Detect what the customer explicitly asked for
     req_text = " ".join([
@@ -846,11 +866,15 @@ def _apply_hard_feature_rules(
     conn = get_conn()
     demoted = []
     for sku in list(perfect):
-        row = conn.execute("SELECT name, what_it_does FROM products WHERE id=?", (sku,)).fetchone()
+        row = conn.execute("""SELECT p.name, p.what_it_does, pi.out_ndi
+                              FROM products p LEFT JOIN product_interfaces pi ON pi.sku=p.id
+                              WHERE p.id=?""", (sku,)).fetchone()
         if not row:
             continue
         product_text = ((row[0] or "") + " " + (row[1] or "")).lower()
         for feature_name, keywords in feature_checks:
+            if feature_name == "ndi" and row[2] == 1:
+                continue
             if not any(kw in product_text for kw in keywords):
                 # Feature required but not found in product → demote to partial
                 perfect.remove(sku)
@@ -884,22 +908,17 @@ CRITICAL: Your main analysis depends on which section you receive:
 - If you receive "CLOSEST MATCHES" (meaning no perfect matches exist) → analyze those honestly, make clear what each product is missing vs. what the customer asked for, and explain trade-offs. Do NOT pretend they are perfect.
 - "PARTIAL MATCHES" section (when present alongside PERFECT MATCHES) → ignore entirely in your text output.
 
-For each PERFECT MATCH product explain:
-- What makes it different from the others in the list
-- Which use case or scenario it is best suited for
-- Key specs that match the customer's requirements
-- Any trade-offs between the options
-- Price tier (budget / mid / professional)
+Keep the response under 80 words. The product cards link to full specifications.
+For cameras, describe a model family once and state available zoom and color configurations.
+Do not repeat near-identical SKU variants in prose.
+Mention at most three distinct options, each with one sentence about its practical difference.
 
 End with a clear "Best pick for your case" recommendation with a specific reason tied to what the customer told you.
 
 OUTPUT FORMAT:
 
-For each perfect match product:
-**[SKU]** - [Short product name] ($[price])
-Best for: [1-line ideal use case]
-Pros: [2-3 bullet points]
-Limitations: [1-2 bullet points only if relevant to this customer's case]
+For each distinct option or camera family:
+**[SKU or family]** - [one short reason to choose it; camera families: zoom/color choices]
 
 ---
 
@@ -919,6 +938,7 @@ RULES:
 - Do not use backtick code formatting
 - If a product has a color note (Black / White), mention the color options in one line - do not treat the alternate color as a separate product
 - Never present accessories (SKUs containing "-ACC-") as main product recommendations
+- BG-NUTRIX is a medical camera. Mention it only for an explicitly medical customer scenario.
 
 {{UPSELL_BLOCK}}"""
 
@@ -976,11 +996,9 @@ _UPSELL_BY_SCENARIO = {
 }
 
 _UPSELL_DEFAULT = (
-    "After the product comparison and best pick, add a short 'You might also need:' section.\n"
-    "Suggest only equipment that directly complements the recommended product "
-    "(e.g. extenders if a matrix was recommended, controllers if cameras were recommended).\n"
-    "Do NOT suggest cameras unless this is a production, conferencing, or worship scenario.\n"
-    "Keep to 2-3 bullet points max. No specific SKUs — categories only."
+    "Add 'You might also need:' only if a missing component is necessary for the stated setup. "
+    "Mention one item in one short sentence; otherwise omit the section. "
+    "Do not suggest cameras outside production, conferencing, or worship scenarios."
 )
 
 
@@ -1009,6 +1027,7 @@ def get_flow_a_recommendation(
         requested_categories=requested_categories or [],
         answers=answers or {},
         plan=plan or {},
+        question=question,
     )
 
     all_skus = perfect_skus + [s for s in partial_skus if s not in perfect_skus]
@@ -1101,11 +1120,10 @@ def stream_flow_a_recommendation(
         requested_categories=requested_categories or [],
         answers=answers or {},
         plan=plan or {},
+        question=question,
     )
     perfect_set = set(perfect_list)
     partial_set = set(partial_list) - perfect_set
-
-    all_skus = list(perfect_set) + list(partial_set)
 
     # Fetch products
     conn = get_conn()
@@ -1120,8 +1138,8 @@ def stream_flow_a_recommendation(
                 result.append(_row_to_dict(row))
         return result
 
-    perfect_products = _fetch_p(list(perfect_set))
-    partial_products = _fetch_p(list(partial_set))
+    perfect_products = _fetch_p(perfect_list)
+    partial_products = _fetch_p([sku for sku in partial_list if sku in partial_set])
     conn.close()
 
     if not perfect_products and not partial_products:
@@ -1208,7 +1226,12 @@ def get_universal_recommendation(
                     and not str(k).startswith("_")}
 
     # ── PASS 1: identify SKUs ─────────────────────────────────────────────
+    from api.product_rules import MEDICAL_TERMS
+    medical_context = bool(MEDICAL_TERMS.search(question))
     pass1_skus = _pass1_select_skus(question, session_info)
+    if not medical_context:
+        pass1_skus = [s for s in pass1_skus if s != "BG-NUTRIX"]
+        candidate_skus = [s for s in (candidate_skus or []) if s != "BG-NUTRIX"]
 
     # Merge with any semantic pre-search hints (deduplicated)
     all_hint_skus = list(dict.fromkeys((pass1_skus or []) + (candidate_skus or [])))
@@ -1246,6 +1269,9 @@ Verify signal compatibility at every link and show the complete chain.
     )
 
     answer = resp.choices[0].message.content
+    if not medical_context and "BG-NUTRIX" in answer.upper():
+        # Fail closed if the model ignores the medical-only restriction.
+        answer = "\n".join(line for line in answer.splitlines() if "BG-NUTRIX" not in line.upper()).strip()
     found_skus = sorted(set(_SKU_RE.findall(answer.upper())))
 
     return {
