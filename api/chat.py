@@ -5,7 +5,7 @@ The model acts as a human AV Sales Consultant / Installer.
 It converses naturally, asks exactly what it needs, and only
 triggers product search when it has gathered enough data.
 """
-import os, json
+import os, json, math, re
 from openai import OpenAI
 
 CONSULTANT_SYSTEM = """You are Alex, a senior AV Sales Consultant with 20 years of field installation experience.
@@ -315,6 +315,21 @@ def run_chat_turn(
         }
 
     intent   = data.get("intent") or {}
+    # Chips may contain ranges such as "5-8" or "8 or more". The session
+    # schema needs integers; use the upper end of a range so capacity is not
+    # undersized, and the lower bound for open-ended "or more" answers.
+    for key in ("num_inputs", "num_outputs"):
+        count = _parse_capacity(intent.get(key))
+        if count is None:
+            intent.pop(key, None)
+        else:
+            intent[key] = count
+    if "distance_m" in intent:
+        distance = _parse_distance_m(intent["distance_m"])
+        if distance is None:
+            intent.pop("distance_m")
+        else:
+            intent["distance_m"] = distance
     chips    = data.get("chips") or []
     ready    = bool(data.get("ready_to_search"))
     msg      = data.get("message", "")
@@ -386,17 +401,7 @@ def run_chat_turn(
     if intent.get("resolution"):
         state_update["resolution"] = _normalise_res(intent["resolution"])
     if intent.get("distance_m"):
-        import re as _re
-        raw_dist = intent["distance_m"]
-        if isinstance(raw_dist, str):
-            # detect feet: "30ft", "100 ft", "30-100ft", "under 30ft"
-            is_feet = bool(_re.search(r'ft|feet|\'', raw_dist, _re.I))
-            nums = [float(x) for x in _re.findall(r'[\d.]+', raw_dist)]
-            val = max(nums) if nums else None
-            if val is not None:
-                raw_dist = int(val * 0.3048) if is_feet else int(val)
-        if raw_dist:
-            state_update["max_distance_m"] = int(raw_dist)
+        state_update["max_distance_m"] = intent["distance_m"]
     if intent.get("signal_type"):
         state_update["signal_type"] = intent["signal_type"]
     if intent.get("zoom"):
@@ -412,6 +417,38 @@ def run_chat_turn(
         "_scenario_answers":     answers,
         "_clarification_round":  0,
     }
+
+
+def _parse_capacity(value) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if value > 0 else None
+    if not isinstance(value, str):
+        return None
+    numbers = [int(n) for n in re.findall(r"\d+", value)]
+    if not numbers:
+        return None
+    count = max(numbers)
+    if re.search(r"(?:more than|over|greater than|>)\s*\d+", value, re.I):
+        count += 1
+    return count if count > 0 else None
+
+
+def _parse_distance_m(value) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return math.ceil(value) if math.isfinite(value) and value > 0 else None
+    if not isinstance(value, str):
+        return None
+    numbers = [float(n) for n in re.findall(r"\d+(?:\.\d+)?", value)]
+    if not numbers:
+        return None
+    distance = max(numbers)
+    if re.search(r"ft|feet|'", value, re.I):
+        distance *= 0.3048
+    return math.ceil(distance) if distance > 0 else None
 
 
 def _intent_to_answers(intent: dict) -> dict:

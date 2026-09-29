@@ -1739,43 +1739,30 @@ async function sendMessage() {
   addMessage(text, 'user');
   showTyping();
 
-  const sendWithRetry = async (retrying = false) => {
-    try {
-      const res = await fetch(`${API}/chat/message`, {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ session_id: sessionId, message: text })
-      });
+  try {
+    const res = await fetch(`${API}/chat/message`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ session_id: sessionId, message: text })
+    });
 
-      // Session expired or server restarted — reinit and retry once
-      if (res.status === 404 || res.status === 500) {
-        if (!retrying) {
-          await init(true);
-          return sendWithRetry(true);
-        }
-      }
-
+    if (!res.ok) {
+      hideTyping();
+      addMessage(res.status === 404
+        ? 'This session is unavailable. Please start a new chat.'
+        : 'I could not process that message. Your chat is still here — please try again.', 'bot');
+    } else {
       const data = await res.json();
       hideTyping();
       if (data.message) addMessage(data.message, 'bot');
       if (data.chips?.length) showChips(data.chips);
       if (data.ready_to_search) startStreamingRecommendation(sessionId);
-      // Follow-up handler detected a different topic → offer a fresh chat
       if (data.suggest_new_chat) showNewChatSuggestion();
-
-    } catch(e) {
-      if (!retrying) {
-        // Network error — wait 1s, reinit session, retry once
-        await new Promise(r => setTimeout(r, 1000));
-        const ok = await init(true);
-        if (ok) return sendWithRetry(true);
-      }
-      hideTyping();
-      addMessage('Server unavailable — please reload the page.', 'bot');
     }
-  };
-
-  await sendWithRetry();
+  } catch(e) {
+    hideTyping();
+    addMessage('Connection interrupted. Your chat is still here — please try again.', 'bot');
+  }
   document.getElementById('send').disabled = false;
   input.focus();
 }

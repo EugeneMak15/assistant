@@ -319,9 +319,6 @@ def chat_message(body: ChatMessage):
 
     history = _chat_histories[sid]
 
-    # Add user message to history
-    history.append({"role": "user", "content": body.message})
-
     # ── Follow-up mode ────────────────────────────────────────────────────────
     # If this session already completed a search, answer questions about the found
     # products / topic instead of restarting the gathering flow. If the message is a
@@ -333,7 +330,7 @@ def chat_message(body: ChatMessage):
         products = [p.model_dump() for p in _fetch_products_by_skus(fres["skus"])]
         try:
             fout = run_followup_turn(
-                history=history[:-1],
+                history=history,
                 user_message=body.message,
                 results={"topic": fres.get("topic", ""), "products": products, "rec_text": fres.get("rec_text", "")},
             )
@@ -344,7 +341,10 @@ def chat_message(body: ChatMessage):
                     chips=[], ready_to_search=False, session=session,
                 )
             raise
-        history.append({"role": "assistant", "content": fout["message"]})
+        history.extend([
+            {"role": "user", "content": body.message},
+            {"role": "assistant", "content": fout["message"]},
+        ])
         save_chat_state(sid, _scenario_state.get(sid, {}), history)
         return ChatResponse(
             message=fout["message"],
@@ -365,7 +365,7 @@ def chat_message(body: ChatMessage):
     # Run LLM conversation turn
     try:
         result = run_chat_turn(
-            history=history[:-1],  # history before this message
+            history=history,
             user_message=body.message,
             session_state=session_dict,
             session_id=sid,
@@ -388,8 +388,12 @@ def chat_message(body: ChatMessage):
     if state_update:
         session = update_session(sid, state_update)
 
-    # Add assistant response to history
-    history.append({"role": "assistant", "content": result["message"]})
+    # Commit the turn only after it succeeded. A failed request can then be
+    # retried in the same session without leaving an orphaned user message.
+    history.extend([
+        {"role": "user", "content": body.message},
+        {"role": "assistant", "content": result["message"]},
+    ])
 
     # Flush to DB so state survives hot-reload
     save_chat_state(sid, _scenario_state.get(sid, {}), history)
