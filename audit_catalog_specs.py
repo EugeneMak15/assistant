@@ -5,13 +5,22 @@ The default mode is read-only. Ambiguous records are reported, never changed.
 """
 
 import argparse
+from datetime import datetime, timezone
 import json
+from pathlib import Path
 import sqlite3
 
 
-def audit(db_path: str, apply: bool = False) -> dict:
+def audit(db_path: str, apply: bool = False, backup_dir: str | None = None) -> dict:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
+    if apply and backup_dir:
+        destination = Path(backup_dir)
+        destination.mkdir(parents=True, exist_ok=True)
+        backup_path = destination / f"products-{datetime.now(timezone.utc):%Y%m%dT%H%M%S%fZ}.db"
+        with sqlite3.connect(backup_path) as backup_conn:
+            conn.backup(backup_conn)
+        print(f"SQLite backup: {backup_path}")
     summary = {"false_8k": [], "false_4k120": [], "ndi_conflicts": [], "updated": []}
     rows = conn.execute("""SELECT p.id, p.name, p.product_url, p.resolutions, p.output_signals,
                                   pi.max_res, pi.supports_8k, pi.out_ndi
@@ -42,7 +51,7 @@ def audit(db_path: str, apply: bool = False) -> dict:
             summary["updated"].append(sku)
         if apply and sku == "BG-STREAM-E":
             # This URL selects the Dante-ready variant; the NDI variant is BG-STREAM-NE.
-            if "technology=dante" in (row["product_url"] or "").lower():
+            if "technology=dante" in (row["product_url"] or "").lower() and (row["out_ndi"] or "NDI" in signals):
                 conn.execute("UPDATE product_interfaces SET out_ndi=0 WHERE sku=?", (sku,))
                 corrected_signals = [s for s in signals if s != "NDI"]
                 conn.execute("UPDATE products SET output_signals=? WHERE id=?", (json.dumps(corrected_signals), sku))
@@ -55,7 +64,7 @@ def audit(db_path: str, apply: bool = False) -> dict:
                 corrected_signals.append("NDI")
             conn.execute("UPDATE products SET output_signals=? WHERE id=?", (json.dumps(corrected_signals), sku))
             summary["updated"].append(sku)
-        if apply and sku == "BG-IPGEAR-XTREME-CORE" and "4K120" in name_upper:
+        if apply and sku == "BG-IPGEAR-XTREME-CORE" and "4K120" in name_upper and max_res != "4K120":
             conn.execute("UPDATE product_interfaces SET max_res='4K120' WHERE sku=?", (sku,))
             summary["updated"].append(sku)
     if apply:
@@ -68,5 +77,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--db", required=True)
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--backup-dir", help="Create a consistent SQLite backup before applying changes")
     args = parser.parse_args()
-    print(json.dumps(audit(args.db, args.apply), indent=2))
+    print(json.dumps(audit(args.db, args.apply, args.backup_dir), indent=2))
