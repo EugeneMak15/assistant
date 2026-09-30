@@ -1,5 +1,6 @@
 """Regressions from the September 2026 advisor review."""
 
+import json
 import sys
 import types
 import unittest
@@ -82,6 +83,46 @@ class AdvisorRulesTests(unittest.TestCase):
             )
         self.assertNotIn("BG-UHD-42M", perfect + partial)
         self.assertEqual(set(perfect + partial), {"BG-8K-HS41", "BG-8K-HS41A"})
+
+    def test_camera_and_switcher_both_survive_multi_device_filter(self):
+        from api import universal_engine
+
+        question = "Four 4K HDMI PTZ cameras with 12x zoom and a four-input production switcher"
+        candidates = ["BG-ADAMO-4K12X-B", "BG-QUADFUSION-4K", "BG-8K-HS41"]
+        with patch.object(universal_engine, "OpenAI", side_effect=RuntimeError("offline")):
+            perfect, partial = universal_engine._sanity_filter_candidates(
+                candidates, ["PTZ cameras", "production switcher"], {}, {}, question,
+            )
+        self.assertIn("BG-ADAMO-4K12X-B", perfect + partial)
+        self.assertIn("BG-QUADFUSION-4K", perfect + partial)
+
+    def test_classifier_cannot_omit_requested_camera_category(self):
+        from api import universal_engine
+
+        response = types.SimpleNamespace(
+            usage=None,
+            choices=[types.SimpleNamespace(message=types.SimpleNamespace(content=json.dumps({
+                "perfect": ["BG-QUADFUSION-4K"], "partial": [],
+                "removed": [{"sku": "BG-ADAMO-4K12X-B", "rule": 1}],
+            })))],
+        )
+        with patch.dict("os.environ", {"OPENAI_API_KEY": "test"}), patch.object(universal_engine, "OpenAI") as client:
+            client.return_value.chat.completions.create.return_value = response
+            perfect, partial = universal_engine._sanity_filter_candidates(
+                ["BG-ADAMO-4K12X-B", "BG-QUADFUSION-4K"],
+                ["PTZ cameras", "production switcher"], {}, {},
+                "Four 4K HDMI PTZ cameras with 12x zoom and a four-input production switcher",
+            )
+        self.assertEqual(perfect, ["BG-QUADFUSION-4K"])
+        self.assertEqual(partial, ["BG-ADAMO-4K12X-B"])
+        client.return_value.chat.completions.create.assert_called_once()
+
+    def test_multi_device_response_instructions_include_each_category(self):
+        from api.universal_engine import _build_flow_a_system
+
+        prompt = _build_flow_a_system(multi_category=True)
+        self.assertIn("Never omit an entire requested category", prompt)
+        self.assertNotIn("PARTIAL MATCHES\" section (when present alongside PERFECT MATCHES) → ignore", prompt)
 
     def test_camera_family_keeps_signal_type_and_lists_colors(self):
         conn = db.get_conn()

@@ -742,6 +742,18 @@ def _sanity_filter_candidates(
     from api.product_rules import hard_mismatch, rank_product, requirement_text
 
     requirement = requirement_text(question, answers, plan)
+    # A multi-device request means camera AND switcher in the result, not that
+    # each individual SKU must satisfy both device types. Reuse the per-category
+    # SQL search so the classifier receives only candidates for each requested role.
+    category_groups: dict[str, set[str]] = {}
+    if len(requested_categories) > 1:
+        from api.scenario_planner import _find_matching_skus_for_flow_a
+
+        candidate_set = set(candidate_skus)
+        category_groups = {
+            category: set(_find_matching_skus_for_flow_a([category], answers, question)) & candidate_set
+            for category in requested_categories
+        }
 
     # Build full product context (same as FLOW_A sees) so filter can read actual specs/features
     conn = get_conn()
@@ -753,7 +765,19 @@ def _sanity_filter_candidates(
             product = _row_to_dict(row)
             interface_row = conn.execute("SELECT * FROM product_interfaces WHERE sku=?", (sku,)).fetchone()
             interface = dict(interface_row) if interface_row else None
-            if hard_mismatch(product, interface, requirement, requested_categories) is None:
+            if category_groups:
+                matching_categories = [
+                    category for category, members in category_groups.items() if sku in members
+                ]
+                is_eligible = any(
+                    hard_mismatch(product, interface, requirement, [category]) is None
+                    for category in matching_categories
+                )
+            else:
+                is_eligible = hard_mismatch(
+                    product, interface, requirement, requested_categories
+                ) is None
+            if is_eligible:
                 eligible.append((sku, rank_product(product, interface, requirement)))
                 products.append(product)
     conn.close()
@@ -779,6 +803,12 @@ def _sanity_filter_candidates(
     scenario_summary = plan.get("scenario_summary", "")
     if scenario_summary:
         req_lines.append(f"Venue/context: {scenario_summary}")
+    if category_groups:
+        req_lines.append("Every requested category is required; do not treat them as alternatives.")
+        for category, members in category_groups.items():
+            group_skus = [sku for sku in candidate_skus if sku in members]
+            if group_skus:
+                req_lines.append(f"{category} candidates: {', '.join(group_skus)}")
 
     constraint_section = ("\n\n## Hard constraints (override everything else)\n" + "\n".join(hard_constraints)) if hard_constraints else ""
 
@@ -830,6 +860,15 @@ def _sanity_filter_candidates(
         perfect, partial = _apply_hard_feature_rules(
             perfect, partial, answers, plan, conn_ref=None
         )
+
+        # The optional LLM classifier can omit a whole requested device type.
+        # Keep the best hard-eligible candidate for that role as a partial match
+        # instead of silently dropping the role from the customer-facing result.
+        for members in category_groups.values():
+            if members and not any(sku in members for sku in perfect + partial):
+                fallback = next((sku for sku in candidate_skus if sku in members), None)
+                if fallback:
+                    partial.append(fallback)
 
         order = {sku: index for index, sku in enumerate(candidate_skus)}
         return sorted(perfect, key=order.get), sorted(partial, key=order.get)
@@ -1010,9 +1049,21 @@ _UPSELL_DEFAULT = (
 )
 
 
-def _build_flow_a_system(scenario_type: str = "") -> str:
+def _build_flow_a_system(scenario_type: str = "", multi_category: bool = False) -> str:
     upsell = _UPSELL_BY_SCENARIO.get(scenario_type, _UPSELL_DEFAULT)
-    return _FLOW_A_SYSTEM_BASE.replace("{UPSELL_BLOCK}", upsell)
+    prompt = _FLOW_A_SYSTEM_BASE.replace("{UPSELL_BLOCK}", upsell)
+    if multi_category:
+        prompt = prompt.replace(
+            "The customer asked about a specific product category.",
+            "The customer asked for multiple device categories; they need all of them together.",
+        ).replace(
+            "- If you receive \"PERFECT MATCHES\" → analyze ONLY those. Do NOT mention PARTIAL MATCHES in your text (they are shown separately in the UI).",
+            "- For EACH requested category, discuss a perfect match if available; otherwise mention its closest partial match and the limitation. Never omit an entire requested category.",
+        ).replace(
+            "- \"PARTIAL MATCHES\" section (when present alongside PERFECT MATCHES) → ignore entirely in your text output.",
+            "- PARTIAL MATCHES for a category with no perfect match must still be addressed briefly and honestly.",
+        )
+    return prompt
 
 
 def get_flow_a_recommendation(
@@ -1090,7 +1141,7 @@ def get_flow_a_recommendation(
     resp = client.chat.completions.create(
         model="gpt-5.6-sol",
         messages=[
-            {"role": "system", "content": _build_flow_a_system(scenario_type)},
+            {"role": "system", "content": _build_flow_a_system(scenario_type, len(requested_categories or []) > 1)},
             {"role": "user",   "content": user_message},
         ],
     )
@@ -1201,7 +1252,7 @@ def stream_flow_a_recommendation(
     stream = client.chat.completions.create(
         model="gpt-5.6-sol",
         messages=[
-            {"role": "system", "content": _build_flow_a_system(scenario_type)},
+            {"role": "system", "content": _build_flow_a_system(scenario_type, len(requested_categories or []) > 1)},
             {"role": "user",   "content": user_message},
         ],
         stream=True,
