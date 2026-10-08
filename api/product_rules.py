@@ -129,7 +129,8 @@ def hard_mismatch(product: dict, interface: dict | None, text: str, categories: 
             return "excessive output capacity"
         if "matrix" in text and (interface.get("out_hdmi_count") or 0) < 2:
             return "independent matrix outputs required"
-        if "multiview" not in text and "multiviewer" in name:
+        if (interface.get("primary_fn") == "multiviewer"
+                and "multiview" not in text.lower() and "video wall" not in text.lower()):
             return "multiviewer was not requested"
         if product.get("category") == "presentation_switcher" and "presentation" not in text:
             return "presentation switcher was not requested"

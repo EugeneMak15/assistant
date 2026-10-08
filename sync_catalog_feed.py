@@ -92,6 +92,11 @@ def _price(value: str | None) -> float | None:
     return float(match.group().replace(",", "")) if match else None
 
 
+def _feed_price(item: ET.Element) -> float | None:
+    """Google Shopping uses sale_price as the current customer-facing price."""
+    return _price(item.findtext(G + "sale_price")) or _price(item.findtext(G + "price"))
+
+
 def _base_product(sku: str, item: ET.Element, page: dict, profile: tuple) -> dict:
     category, max_res, distance, bandwidth, transport, usb = profile
     title = _clean(item.findtext(G + "title") or sku)
@@ -118,7 +123,7 @@ def _base_product(sku: str, item: ET.Element, page: dict, profile: tuple) -> dic
         "inputs": 1, "outputs": 2 if sku == "BG-8KCH" else 1,
         "input_signals": json.dumps(input_signals), "output_signals": json.dumps(output_signals),
         "resolutions": json.dumps(resolutions), "max_bandwidth_gbps": bandwidth,
-        "max_distance_m": distance, "price_usd": _price(item.findtext(G + "price")),
+        "max_distance_m": distance, "price_usd": _feed_price(item),
         "stock_status": status, "description": description,
         "features": json.dumps(features), "specs_json": json.dumps(page["specs"]),
         "product_url": item.findtext("link"), "image_url": item.findtext(G + "image_link"),
@@ -192,7 +197,7 @@ def _camera_variant(conn: sqlite3.Connection, sku: str, item: ET.Element, page: 
     inherited_specs["Optical zoom"] = "31x"
     description = f"4K auto-tracking PTZ camera with 31x optical zoom and {('NDI' if '4KND' in sku else 'Dante AV-H' if '4KDA' in sku else 'HDMI/SDI/USB')} connectivity."
     product.update(
-        id=sku, name=title, title=title, price_usd=_price(item.findtext(G + "price")),
+        id=sku, name=title, title=title, price_usd=_feed_price(item),
         stock_status=("Out of Stock" if (item.findtext(G + "availability") or "").lower() in {"out_of_stock", "out of stock"} else "In Stock"),
         product_url=item.findtext("link"),
         image_url=item.findtext(G + "image_link"),

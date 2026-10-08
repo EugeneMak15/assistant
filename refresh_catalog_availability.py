@@ -9,9 +9,10 @@ import argparse
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+import re
 import sqlite3
 
-from sync_catalog_feed import FEED_URL, G, _camera_alias, _feed_items, _price
+from sync_catalog_feed import FEED_URL, G, _camera_alias, _feed_items, _feed_price
 
 
 def fetch_feed_products(feed_url: str = FEED_URL) -> dict[str, dict]:
@@ -25,15 +26,16 @@ def fetch_feed_products(feed_url: str = FEED_URL) -> dict[str, dict]:
             raise ValueError(f"Unknown feed availability for {sku}: {raw_status!r}")
         products[sku] = {
             "availability": raw_status,
-            "price": _price(item.findtext(G + "price")),
+            "price": _feed_price(item),
             "product_type": (item.findtext(G + "product_type") or "").strip(),
+            "description": (item.findtext(G + "description") or ""),
         }
     return products
 
 
 def plan_updates(conn: sqlite3.Connection, feed: dict[str, dict]) -> dict:
     rows = {row["id"].upper(): row for row in conn.execute(
-        "SELECT id, stock_status, site_category, price_usd FROM products"
+        "SELECT id, stock_status, site_category, price_usd, inputs, outputs, max_distance_m, what_it_does FROM products"
     )}
     # Some feed camera variants append -31 to an otherwise identical legacy SKU.
     # Reconcile that alias to the existing row; do not hide a still-stocked camera.
@@ -45,6 +47,7 @@ def plan_updates(conn: sqlite3.Connection, feed: dict[str, dict]) -> dict:
             normalized_feed[original] = product
             aliases[sku] = original
     updates = []
+    spec_updates = []
     for sku, row in rows.items():
         product = normalized_feed.get(sku)
         if product is None:
@@ -63,6 +66,14 @@ def plan_updates(conn: sqlite3.Connection, feed: dict[str, dict]) -> dict:
             row["stock_status"], row["site_category"], row["price_usd"]
         ):
             updates.append((status, site_category, price, row["id"]))
+        if product and sku == "BG-EXH-8KF" and re.search(r"up to 300\s*m\b", product["description"], re.I):
+            accurate = ("8K60/4K120 HDMI 2.1 fiber extender; up to 300 m with OM4 fiber "
+                        "(OM3: 200 m; OM2: 40 m).")
+            if row["max_distance_m"] != 300 or row["what_it_does"] != accurate:
+                spec_updates.append((row["inputs"], row["outputs"], 300, accurate, row["id"]))
+        if product and sku == "BG-4K-VP1616" and re.search(r"16\s*x\s*16", product["description"], re.I):
+            if row["inputs"] != 16 or row["outputs"] != 16:
+                spec_updates.append((16, 16, row["max_distance_m"], row["what_it_does"], row["id"]))
     return {
         "feed_skus": len(feed),
         "matched_skus": len(rows.keys() & normalized_feed.keys()),
@@ -70,7 +81,9 @@ def plan_updates(conn: sqlite3.Connection, feed: dict[str, dict]) -> dict:
         "new_skus_for_review": sorted(feed.keys() - rows.keys() - aliases.keys()),
         "missing_from_feed": sorted(rows.keys() - normalized_feed.keys()),
         "changed_skus": [row[3] for row in updates],
+        "corrected_specs": [row[4] for row in spec_updates],
         "updates": updates,
+        "spec_updates": spec_updates,
     }
 
 
@@ -80,7 +93,7 @@ def refresh(db_path: str, apply: bool = False, backup_dir: str | None = None) ->
     conn.row_factory = sqlite3.Row
     try:
         result = plan_updates(conn, feed)
-        if apply and result["updates"]:
+        if apply and (result["updates"] or result["spec_updates"]):
             if not backup_dir:
                 raise ValueError("--backup-dir is required with --apply")
             target = Path(backup_dir)
@@ -93,9 +106,14 @@ def refresh(db_path: str, apply: bool = False, backup_dir: str | None = None) ->
                 "UPDATE products SET stock_status=?, site_category=?, price_usd=? WHERE id=?",
                 result["updates"],
             )
+            conn.executemany(
+                "UPDATE products SET inputs=?, outputs=?, max_distance_m=?, what_it_does=? WHERE id=?",
+                result["spec_updates"],
+            )
             conn.commit()
             result["backup_path"] = str(backup_path)
         result.pop("updates")
+        result.pop("spec_updates")
         return result
     finally:
         conn.close()

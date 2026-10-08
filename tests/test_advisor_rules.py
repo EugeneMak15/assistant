@@ -172,6 +172,13 @@ class AdvisorRulesTests(unittest.TestCase):
         self.assertEqual(kit["in_hdmi_count"], 16)
         self.assertEqual(kit["out_hdmi_count"], 16)
 
+    def test_matrix_with_multiview_feature_is_still_a_matrix(self):
+        product = {"id": "BG-4K-VP1616", "name": "16x16 matrix video wall multiviewer",
+                   "category": "switcher", "stock_status": "In Stock"}
+        interface = {"primary_fn": "matrix-switcher", "in_hdmi_count": 16,
+                     "out_hdmi_count": 16, "supports_4k": 1, "max_res": "4K60"}
+        self.assertIsNone(hard_mismatch(product, interface, "16x16 seamless video wall matrix", ["switcher"]))
+
     def test_8k60_and_extension_distance_are_hard_requirements(self):
         self.assertEqual(requested_video("Need 8K60 video"), (True, False))
         product = {"id": "BG-EXH-8K50C", "name": "8K60 HDMI extender", "category": "extender",
