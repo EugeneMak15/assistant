@@ -41,6 +41,32 @@ def requested_ports(text: str) -> tuple[int | None, int | None]:
     return int(inputs.group(1)) if inputs else None, int(outputs.group(1)) if outputs else (1 if one_display else None)
 
 
+def is_usb_matrix_request(text: str) -> bool:
+    """USB peripheral routing, not HDMI/video matrix or KVM switching."""
+    if not re.search(r"\busb(?:\s*3(?:\.2)?|\s*2)?\b", text, re.I):
+        return False
+    explicit_usb_only = bool(re.search(r"\busb[ -]?only\b|\bno\s+video\b", text, re.I))
+    if (re.search(r"\bkvm\b", text, re.I) and not explicit_usb_only
+            and not re.search(r"\busb\b.{0,20}\bmatrix\b", text, re.I)):
+        return False
+    if not explicit_usb_only and re.search(r"\b(?:hdmi|video|display|monitor|screen|\d\s*k)\b", text, re.I):
+        return False
+    return bool(re.search(r"\busb\b.{0,35}\b(?:matrix|peripherals?|devices?)\b|"
+                          r"\b(?:share|sharing|route|switch)\b.{0,45}\busb\b.{0,25}\b(?:devices?|peripherals?)\b|"
+                          r"\b(?:matrix|peripherals?|devices?)\b.{0,35}\busb\b", text, re.I | re.S))
+
+
+def requested_kvm_hosts(text: str) -> int | None:
+    """Read host-computer count without treating USB devices as video outputs."""
+    words = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "eight": 8}
+    match = re.search(r"\b(\d{1,2}|one|two|three|four|five|six|eight)\s*(?:computers?|pcs?|hosts?)\b", text, re.I)
+    if match:
+        value = match.group(1).lower()
+        return int(value) if value.isdigit() else words[value]
+    match = re.search(r"\b(\d{1,2})\s*[- ]?\s*port\s+kvm\b", text, re.I)
+    return int(match.group(1)) if match else None
+
+
 def requested_distance_m(text: str) -> float | None:
     match = re.search(r"\b(\d+(?:\.\d+)?)\s*(km|kilometers?|met(?:er|re)s?|m|ft|feet)\b", text, re.I)
     if not match:
@@ -73,8 +99,18 @@ def hard_mismatch(product: dict, interface: dict | None, text: str, categories: 
         return "accessory, not primary equipment"
     if "NUTRIX" in sku and not MEDICAL_TERMS.search(text):
         return "medical-only camera outside a medical scenario"
+    if "usb matrix" in cats:
+        if interface.get("primary_fn") != "usb-matrix-switcher":
+            return "USB peripheral matrix required"
     if sku == "BG-USM-44" and re.search(r"\b(?:hdmi|video|display|monitor|screen|8k|4k)\b", text, re.I):
         return "USB-only matrix does not route video"
+    if "kvm" in cats and re.search(r"\b(?:hdmi|video|display|monitor|screen|8k|4k)\b", text, re.I):
+        if not interface.get("in_hdmi_count") or not interface.get("out_hdmi_count"):
+            return "HDMI video KVM required"
+    if "kvm" in cats:
+        hosts = requested_kvm_hosts(text)
+        if hosts and (interface.get("in_hdmi_count") or product.get("inputs") or 0) < hosts:
+            return "insufficient KVM host inputs"
     if re.search(r"\beARC\b", text, re.I):
         evidence = name + " " + (product.get("description") or "").lower()
         if "earc" not in evidence:
@@ -123,7 +159,7 @@ def hard_mismatch(product: dict, interface: dict | None, text: str, categories: 
         if distance and (product.get("max_distance_m") or 0) < distance:
             return "insufficient extension distance"
 
-    if "switcher" in cats or "matrix" in cats:
+    if ("switcher" in cats or "matrix" in cats) and "usb matrix" not in cats:
         if product.get("category") not in {"switcher", "presentation_switcher"}:
             return "wrong switcher category"
         inputs, outputs = requested_ports(text)
@@ -149,6 +185,8 @@ def rank_product(product: dict, interface: dict | None, text: str) -> tuple:
     """Prefer the closest port count after hard requirements pass."""
     interface = interface or {}
     inputs, outputs = requested_ports(text)
+    if product.get("category") == "kvm_switch" and not inputs:
+        inputs = requested_kvm_hosts(text)
     distance = requested_distance_m(text)
     return (
         max(0, (interface.get("out_hdmi_count") or 0) - outputs) if outputs else 0,

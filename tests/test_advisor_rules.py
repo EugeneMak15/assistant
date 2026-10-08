@@ -42,6 +42,45 @@ class AdvisorRulesTests(unittest.TestCase):
         self.assertTrue(skus)
         self.assertTrue(all("8K" in sku for sku in skus))
 
+    def test_usb_peripheral_matrix_does_not_search_hdmi_matrices(self):
+        examples = [
+            (["usb matrix switcher"], "4x4 USB matrix switcher"),
+            (["matrix switcher"], "4x4 USB matrix switcher"),
+            (["usb switch"], "Four computers need to share the same USB devices, four devices total"),
+        ]
+        for categories, question in examples:
+            with self.subTest(question=question, categories=categories):
+                self.assertEqual(_find_matching_skus_for_flow_a(categories, {}, question), ["BG-USM-44"])
+
+    def test_hdmi_kvm_long_and_short_phrasings_find_video_kvm(self):
+        for categories, question in (
+            (["HDMI KVM switch"], "I need an HDMI KVM switch so I can control 4 computers from one keyboard, mouse and monitor."),
+            (["KVM switch"], "4-port KVM switch, HDMI, 4K, USB keyboard and mouse, one monitor."),
+        ):
+            with self.subTest(question=question):
+                skus = _find_matching_skus_for_flow_a(categories, {}, question)
+                self.assertIn("BG-UHD-KVM41A", skus)
+                self.assertNotIn("BG-USM-44", skus)
+                self.assertNotIn("BG-8K-KVM21A", skus)
+
+    def test_usb_matrix_chat_to_product_card_pipeline(self):
+        from api.chat import run_chat_turn
+        from api.universal_engine import stream_flow_a_recommendation
+
+        turn = run_chat_turn([], "4x4 USB matrix switcher", {})
+        plan = turn["_scenario_plan"]
+        skus = _find_matching_skus_for_flow_a(
+            plan["requested_categories"], turn["_scenario_answers"], turn["search_query"]
+        )
+        self.assertEqual(skus, ["BG-USM-44"])
+        stream = stream_flow_a_recommendation(
+            question=turn["search_query"], candidate_skus=skus, session={},
+            requested_categories=plan["requested_categories"],
+            answers=turn["_scenario_answers"], plan=plan,
+        )
+        self.assertEqual(next(stream), ("product", "BG-USM-44", "perfect"))
+        stream.close()
+
     def test_ndi_variant_of_streaming_encoder(self):
         skus = _find_matching_skus_for_flow_a(
             ["streaming encoder"], {}, "Need a 1080p60 streaming encoder with NDI output."

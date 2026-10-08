@@ -107,6 +107,16 @@ Matrix switcher / extender / splitter:
   4. Resolution — 1080p or 4K? (just ask "1080p or 4K?" — no need to specify refresh rate)
   → Trigger search when all 4 are known.
 
+USB peripheral matrix / USB device sharing:
+  This routes USB peripherals among host computers; it does NOT route HDMI video.
+  Ask only how many host computers and how many shared USB devices. Do NOT ask
+  for display count, video resolution, or video cable length. Search once the
+  two counts are known; USB 3 devices are backward-compatible with USB 2.
+
+HDMI KVM switch:
+  Ask for host computer count, display count, and video resolution only if
+  not already stated. Preserve "HDMI KVM" as a KVM category, not a video matrix.
+
 PTZ camera (production / worship):
   1. How far are subjects from the camera?
   2. Tight close-ups or wide shots? — this is how you derive zoom WITHOUT asking the user a raw "what zoom?" question.
@@ -259,6 +269,54 @@ def _available_camera_zooms() -> list[int]:
     return _CAMERA_ZOOMS_CACHE
 
 
+def _run_usb_matrix_turn(history: list[dict], user_message: str) -> dict:
+    """Keep USB-only sharing out of the video-matrix question/search path."""
+    from .product_rules import requested_kvm_hosts
+
+    user_text = " ".join(h.get("content", "") for h in history if h.get("role") == "user")
+    user_text = (user_text + " " + user_message).lower()
+    matrix = re.search(r"\b(\d{1,2})\s*[x×]\s*(\d{1,2})\b", user_text)
+    hosts = int(matrix.group(1)) if matrix else requested_kvm_hosts(user_text)
+    devices = int(matrix.group(2)) if matrix else None
+    count_words = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "eight": 8}
+    match = re.search(r"\b(\d{1,2}|one|two|three|four|five|six|eight)\s*(?:usb\s*)?(?:devices?|peripherals?)\b", user_text)
+    if match and not devices:
+        value = match.group(1)
+        devices = int(value) if value.isdigit() else count_words[value]
+    if not devices and history and re.search(r"\b(?:devices?|peripherals?)\b", history[-1].get("content", ""), re.I):
+        devices = _parse_capacity(user_message)
+    if not hosts and history and re.search(r"\b(?:computers?|hosts?)\b", history[-1].get("content", ""), re.I):
+        hosts = _parse_capacity(user_message)
+
+    ready = bool(hosts and devices)
+    query = f"{hosts}x{devices} USB matrix switcher for {hosts} computers and {devices} USB devices" if ready else ""
+    if ready:
+        message = f"Got it — {hosts} computers sharing {devices} USB devices. Let me find the right USB matrix..."
+        chips = []
+    elif not hosts:
+        message = "How many computers will share the USB devices?"
+        chips = ["2 computers", "3 computers", "4 computers", "More than 4"]
+    else:
+        message = "How many USB devices will the computers share?"
+        chips = ["1 device", "2 devices", "3 devices", "4 devices"]
+    answers = {}
+    if hosts:
+        answers["How many USB host computers?"] = str(hosts)
+    if devices:
+        answers["How many USB devices?"] = str(devices)
+    return {
+        "message": message, "chips": chips, "state_update": {
+            **({"num_inputs": hosts} if hosts else {}),
+            **({"num_outputs": devices} if devices else {}),
+        },
+        "ready_to_search": ready, "search_query": query,
+        "_scenario_plan": {"flow": "product_selection", "requested_categories": ["usb matrix switcher"],
+                           "scenario_type": "other", "scenario_summary": query or "USB peripheral sharing",
+                           "clarifying_questions": []},
+        "_scenario_answers": answers, "_clarification_round": 0,
+    }
+
+
 def run_chat_turn(
     history: list[dict],
     user_message: str,
@@ -269,6 +327,11 @@ def run_chat_turn(
     One turn of the conversation. Returns:
     { message, chips, state_update, ready_to_search, search_query, _scenario_plan, _scenario_answers }
     """
+    from .product_rules import is_usb_matrix_request
+    user_text = " ".join(h.get("content", "") for h in history if h.get("role") == "user") + " " + user_message
+    if is_usb_matrix_request(user_text):
+        return _run_usb_matrix_turn(history, user_message)
+
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
     # Build messages for the consultant
@@ -380,6 +443,14 @@ def run_chat_turn(
     # Build scenario plan from intent (used by SQL filter downstream)
     flow       = intent.get("flow", "solution_design")
     categories = intent.get("requested_categories") or []
+    if re.search(r"\bkvm\b", _user_text, re.I):
+        categories = ["kvm switch" if "kvm" in str(category).lower() else category
+                      for category in categories]
+        if not categories or categories == ["switcher"]:
+            categories = ["kvm switch"]
+        flow = "product_selection"
+        if ready:
+            sq = (_user_text + " " + sq).strip()
     if intent.get("equipment_type") and not categories:
         categories = [intent["equipment_type"]]
 

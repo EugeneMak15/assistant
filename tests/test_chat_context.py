@@ -33,6 +33,40 @@ class ChatContextTests(unittest.TestCase):
         self.assertEqual(_parse_distance_m("20 feet"), 7)
         self.assertIsNone(_parse_distance_m("Not sure"))
 
+    @patch("api.chat.OpenAI")
+    def test_usb_peripheral_sharing_asks_only_device_count_then_searches(self, mock_openai):
+        opening = "Four computers need to share the same USB devices, and I want to pick which computer gets which device."
+        first = run_chat_turn([], opening, {})
+        self.assertFalse(first["ready_to_search"])
+        self.assertIn("How many USB devices", first["message"])
+        self.assertNotIn("resolution", first["message"].lower())
+        second = run_chat_turn([{"role": "user", "content": opening},
+                                {"role": "assistant", "content": first["message"]}], "4 devices", {})
+        self.assertTrue(second["ready_to_search"])
+        self.assertEqual(second["_scenario_plan"]["requested_categories"], ["usb matrix switcher"])
+        self.assertIn("4x4 USB matrix", second["search_query"])
+        mock_openai.assert_not_called()
+
+    @patch("api.chat.OpenAI")
+    def test_exact_usb_matrix_request_needs_no_video_questions(self, mock_openai):
+        result = run_chat_turn([], "4x4 USB matrix switcher", {})
+        self.assertTrue(result["ready_to_search"])
+        self.assertEqual(result["chips"], [])
+        mock_openai.assert_not_called()
+
+    @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
+    @patch("api.chat.OpenAI")
+    def test_hdmi_kvm_category_is_normalized(self, mock_openai):
+        payload = {"message": "Let me search.", "chips": [], "ready_to_search": True,
+                   "search_query": "4x1 HDMI KVM 4K", "intent": {"flow": "product_selection",
+                   "requested_categories": ["HDMI KVM switch"], "num_inputs": 4,
+                   "num_outputs": 1, "resolution": "4K", "signal_type": "HDMI"}}
+        mock_openai.return_value.chat.completions.create.return_value = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(payload)))])
+        result = run_chat_turn([], "I need an HDMI KVM switch for 4 computers and one monitor", {})
+        self.assertEqual(result["_scenario_plan"]["requested_categories"], ["kvm switch"])
+        self.assertIn("4 computers", result["search_query"])
+
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     @patch("api.chat.OpenAI")
     def test_range_intent_does_not_break_session_update(self, mock_openai):

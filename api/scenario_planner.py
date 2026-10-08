@@ -827,6 +827,43 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
     and the customer's specs. These SKUs will be passed as mandatory to the LLM so it can't
     silently omit any of them.
     """
+    from api.product_rules import is_usb_matrix_request, requested_kvm_hosts
+
+    # USB peripheral matrices have no HDMI ports; the video-matrix SQL path
+    # would reject them and return unrelated HDMI hardware instead.
+    if len(requested_categories) <= 1 and (
+        is_usb_matrix_request(question)
+        or any("usb matrix" in category.lower() for category in requested_categories)
+    ):
+        text = " ".join([question, *(str(x) for x in answers.values())]).lower()
+        matrix = re.search(r"\b(\d{1,2})\s*[x×]\s*(\d{1,2})\b", text)
+        hosts = int(matrix.group(1)) if matrix else requested_kvm_hosts(text)
+        devices = int(matrix.group(2)) if matrix else None
+        device_match = re.search(r"\b(\d{1,2}|one|two|three|four|five|six|eight)\s*(?:usb\s*)?(?:devices?|peripherals?)\b", text)
+        if device_match and not devices:
+            value = device_match.group(1)
+            devices = int(value) if value.isdigit() else {"one": 1, "two": 2, "three": 3,
+                "four": 4, "five": 5, "six": 6, "eight": 8}[value]
+        from api.db import get_conn
+        conn = get_conn()
+        try:
+            rows = conn.execute(
+                "SELECT p.id FROM products p JOIN product_interfaces pi ON pi.sku=p.id "
+                "WHERE pi.primary_fn='usb-matrix-switcher' "
+                "AND (p.stock_status IS NULL OR p.stock_status NOT IN ('Discontinued','Out of Stock','Not in Feed')) "
+                "AND (p.site_category IS NULL OR p.site_category!='Discontinued') "
+                "AND (? IS NULL OR p.inputs>=?) AND (? IS NULL OR p.outputs>=?)",
+                (hosts, hosts, devices, devices),
+            ).fetchall()
+        finally:
+            conn.close()
+        return _filter_hard_requirements([row[0] for row in rows], ["usb matrix switcher"], answers, question)
+
+    requested_categories = ["kvm switch" if "kvm" in category.lower() else category
+                            for category in requested_categories]
+    if not requested_categories and re.search(r"\bkvm\b", question, re.I):
+        requested_categories = ["kvm switch"]
+
     # Multi-category requests (e.g. "PTZ camera + joystick + production switcher") MUST be
     # searched one category at a time and then unioned. If searched together, the device-type
     # flags (is_matrix / is_camera / is_ptz_controller) all turn on at once and their
