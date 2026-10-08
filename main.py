@@ -249,7 +249,7 @@ def _fetch_products_by_skus(skus: list[str]) -> list[Product]:
     products = []
     for sku in skus:
         row = conn.execute(
-            "SELECT * FROM products WHERE id=? AND (site_category IS NULL OR site_category != 'Discontinued') AND (stock_status IS NULL OR stock_status NOT IN ('Discontinued', 'Limited Stock'))",
+            "SELECT * FROM products WHERE id=? AND (site_category IS NULL OR site_category != 'Discontinued') AND (stock_status IS NULL OR stock_status NOT IN ('Discontinued', 'Out of Stock', 'Not in Feed'))",
             (sku,)
         ).fetchone()
         if row:
@@ -337,6 +337,7 @@ def _chat_message(body: ChatMessage):
     # clearly different need, the handler flags suggest_new_chat so the UI can offer
     # to start fresh (avoids mixing unrelated history).
     fres = _session_results.get(sid)
+    refining_search = False
     if fres and fres.get("skus"):
         from api.chat import run_followup_turn
         products = [p.model_dump() for p in _fetch_products_by_skus(fres["skus"])]
@@ -353,18 +354,24 @@ def _chat_message(body: ChatMessage):
                     chips=[], ready_to_search=False, session=session,
                 )
             raise
-        history.extend([
-            {"role": "user", "content": body.message},
-            {"role": "assistant", "content": fout["message"]},
-        ])
-        save_chat_state(sid, _scenario_state.get(sid, {}), history)
-        return ChatResponse(
-            message=fout["message"],
-            chips=[],
-            ready_to_search=False,
-            session=session,
-            suggest_new_chat=fout["suggest_new_chat"],
-        )
+        if fout.get("refine_search"):
+            # Preserve the gathering history and session specs, then let the
+            # consultant recalculate the plan and run a fresh catalog search.
+            # Do not record the classifier acknowledgement as a separate turn.
+            refining_search = True
+        else:
+            history.extend([
+                {"role": "user", "content": body.message},
+                {"role": "assistant", "content": fout["message"]},
+            ])
+            save_chat_state(sid, _scenario_state.get(sid, {}), history)
+            return ChatResponse(
+                message=fout["message"],
+                chips=[],
+                ready_to_search=False,
+                session=session,
+                suggest_new_chat=fout["suggest_new_chat"],
+            )
 
     # Store selected_roles before building session dict
     if body.selected_roles:
@@ -389,6 +396,9 @@ def _chat_message(body: ChatMessage):
                 chips=[], ready_to_search=False, candidates=[], recommendation=None, session=session,
             )
         raise
+
+    if refining_search:
+        _session_results.pop(sid, None)
 
     # Persist scenario planner state in memory and DB
     for key in ("_scenario_plan", "_scenario_answers", "_clarification_round", "_selected_roles"):
@@ -695,7 +705,7 @@ def stream_recommendation_sse(session_id: str):
                     seen.add(sku)
                     conn = get_conn()
                     row = conn.execute(
-                        "SELECT * FROM products WHERE id=? AND (site_category IS NULL OR site_category != 'Discontinued') AND (stock_status IS NULL OR stock_status NOT IN ('Discontinued', 'Limited Stock'))",
+                        "SELECT * FROM products WHERE id=? AND (site_category IS NULL OR site_category != 'Discontinued') AND (stock_status IS NULL OR stock_status NOT IN ('Discontinued', 'Out of Stock', 'Not in Feed'))",
                         (sku,)
                     ).fetchone()
                     conn.close()
@@ -723,7 +733,7 @@ def stream_recommendation_sse(session_id: str):
                     print(f"[SSE Flow A] product event sku={sku} tier={tier}")
                     conn = get_conn()
                     row = conn.execute(
-                        "SELECT * FROM products WHERE id=? AND (site_category IS NULL OR site_category != 'Discontinued') AND (stock_status IS NULL OR stock_status NOT IN ('Discontinued', 'Limited Stock'))",
+                        "SELECT * FROM products WHERE id=? AND (site_category IS NULL OR site_category != 'Discontinued') AND (stock_status IS NULL OR stock_status NOT IN ('Discontinued', 'Out of Stock', 'Not in Feed'))",
                         (sku,)
                     ).fetchone()
                     variants = []

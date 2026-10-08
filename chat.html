@@ -748,6 +748,14 @@
 <script>
 const API = '';
 let sessionId = null;
+let chatBusy = false;
+
+function setChatBusy(busy) {
+  chatBusy = busy;
+  document.getElementById('input').disabled = busy;
+  document.getElementById('send').disabled = busy;
+  document.getElementById('new-chat').disabled = busy;
+}
 let lastRecommendationText = null;
 let costRefreshTimer = null;
 
@@ -1636,6 +1644,7 @@ function showChips(chips) {
     const c = document.createElement('div');
     c.className = 'chip'; c.textContent = label;
     c.onclick = () => {
+      if (chatBusy) return;
       console.log('[BZB] chip clicked:', label, '| sessionId:', sessionId);
       document.getElementById('input').value = label;
       sendMessage();
@@ -1733,9 +1742,11 @@ function isDiagramRequest(text) {
 
 // ─── Send message ──────────────────────────────────────────────────────────
 async function sendMessage() {
+  if (chatBusy) return;
   const input = document.getElementById('input');
   const text = input.value.trim();
   if (!text || !sessionId) return;
+  setChatBusy(true);
 
   // If user is asking for a diagram and we have a recommendation, show it
   if (isDiagramRequest(text) && lastRecommendationText) {
@@ -1769,20 +1780,23 @@ async function sendMessage() {
     chat.appendChild(wrapper);
     chat.scrollTop = chat.scrollHeight;
 
-    await loadDiagram(lastRecommendationText, diagContainer);
-    chat.scrollTop = chat.scrollHeight;
-    input.focus();
+    try {
+      await loadDiagram(lastRecommendationText, diagContainer);
+      chat.scrollTop = chat.scrollHeight;
+    } finally {
+      setChatBusy(false);
+      input.focus();
+    }
     return;
   }
 
   input.value = '';
   input.style.height = 'auto';
   clearChips();
-  document.getElementById('send').disabled = true;
-
   addMessage(text, 'user');
   showTyping();
 
+  let streaming = false;
   try {
     const res = await fetch(`${API}/chat/message`, {
       method: 'POST',
@@ -1800,16 +1814,22 @@ async function sendMessage() {
       hideTyping();
       if (data.message) addMessage(data.message, 'bot');
       if (data.chips?.length) showChips(data.chips);
-      if (data.ready_to_search) startStreamingRecommendation(sessionId);
+      if (data.ready_to_search) {
+        streaming = true;
+        startStreamingRecommendation(sessionId);
+      }
       if (data.suggest_new_chat) showNewChatSuggestion();
     }
   } catch(e) {
     hideTyping();
     addMessage('Connection interrupted. Your chat is still here — please try again.', 'bot');
+  } finally {
+    refreshSessionCost();
+    if (!streaming) {
+      setChatBusy(false);
+      input.focus();
+    }
   }
-  refreshSessionCost();
-  document.getElementById('send').disabled = false;
-  input.focus();
 }
 
 // ─── SSE streaming recommendation ─────────────────────────────────────────
@@ -2009,6 +2029,7 @@ function startStreamingRecommendation(sid) {
     else if (msg.type === 'done') {
       es.close();
       stopCostPolling();
+      setChatBusy(false);
       streamResizeObserver.disconnect();
       bar.remove();
       const total = perfectCount + partialCount;
@@ -2041,6 +2062,7 @@ function startStreamingRecommendation(sid) {
   es.onerror = () => {
     es.close();
     stopCostPolling();
+    setChatBusy(false);
     streamResizeObserver.disconnect();
     bar.innerHTML = t('error_rec');
     scrollToBottom();
@@ -2101,6 +2123,7 @@ async function init(silent = false) {
 }
 
 async function resetChat() {
+  if (chatBusy) return;
   stopCostPolling(false);
   sessionId = null;
   updateSessionBadge(null);

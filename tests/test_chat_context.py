@@ -5,10 +5,24 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from api.chat import _parse_capacity, _parse_distance_m, run_chat_turn
+from api.chat import _parse_capacity, _parse_distance_m, run_chat_turn, run_followup_turn
 
 
 class ChatContextTests(unittest.TestCase):
+    @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
+    @patch("api.chat.OpenAI")
+    def test_followup_can_request_same_chat_research(self, mock_openai):
+        payload = {"message": "I'll update the search.", "new_topic": False, "refine_search": True}
+        mock_openai.return_value.chat.completions.create.return_value = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(payload)))],
+        )
+        result = run_followup_turn(
+            [{"role": "user", "content": "I need a 4-input matrix"}],
+            "Actually, it needs 8 inputs", {"topic": "matrix", "products": [], "rec_text": ""},
+        )
+        self.assertTrue(result["refine_search"])
+        self.assertFalse(result["suggest_new_chat"])
+
     def test_capacity_chips_are_safe_integer_requirements(self):
         self.assertEqual(_parse_capacity("8 or more"), 8)
         self.assertEqual(_parse_capacity("5-8"), 8)

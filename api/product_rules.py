@@ -65,6 +65,10 @@ def hard_mismatch(product: dict, interface: dict | None, text: str, categories: 
     interface = interface or {}
     cats = " ".join(categories or []).lower()
     name = (product.get("name") or "").lower()
+    if product.get("stock_status") in {"Out of Stock", "Discontinued", "Not in Feed"}:
+        return "product is not available for purchase"
+    if product.get("site_category") == "Discontinued":
+        return "product is discontinued"
     if product.get("category") == "accessory" or any(word in name for word in ("wall mount", "ceiling mount", "mounting bracket")):
         return "accessory, not primary equipment"
     if "NUTRIX" in sku and not MEDICAL_TERMS.search(text):
@@ -160,7 +164,7 @@ def camera_family_variants(conn, sku: str) -> list[dict]:
     variants = []
     for row in conn.execute("""SELECT id, product_url, price_usd, stock_status FROM products
                                WHERE category='camera' AND (site_category IS NULL OR site_category != 'Discontinued')
-                               AND (stock_status IS NULL OR stock_status NOT IN ('Discontinued', 'Limited Stock'))"""):
+                               AND (stock_status IS NULL OR stock_status NOT IN ('Discontinued', 'Out of Stock', 'Not in Feed'))"""):
         if camera_family_key(row["id"]) == key:
             variants.append(dict(row))
     return sorted(variants, key=lambda item: item["id"])

@@ -1097,7 +1097,7 @@ def get_flow_a_recommendation(
         result = []
         for sku in skus:
             row = conn.execute(
-                "SELECT * FROM products WHERE id=? AND (site_category IS NULL OR site_category != 'Discontinued') AND (stock_status IS NULL OR stock_status NOT IN ('Discontinued', 'Limited Stock'))",
+                "SELECT * FROM products WHERE id=? AND (site_category IS NULL OR site_category != 'Discontinued') AND (stock_status IS NULL OR stock_status NOT IN ('Discontinued', 'Out of Stock', 'Not in Feed'))",
                 (sku,),
             ).fetchone()
             if row:
@@ -1191,7 +1191,7 @@ def stream_flow_a_recommendation(
         result = []
         for sku in skus:
             row = conn.execute(
-                "SELECT * FROM products WHERE id=? AND (site_category IS NULL OR site_category != 'Discontinued') AND (stock_status IS NULL OR stock_status NOT IN ('Discontinued', 'Limited Stock'))",
+                "SELECT * FROM products WHERE id=? AND (site_category IS NULL OR site_category != 'Discontinued') AND (stock_status IS NULL OR stock_status NOT IN ('Discontinued', 'Out of Stock', 'Not in Feed'))",
                 (sku,),
             ).fetchone()
             if row:

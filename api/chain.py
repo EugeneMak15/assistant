@@ -141,7 +141,11 @@ def build_chain(session: dict) -> dict:
     conn = get_conn()
 
     for role in template["roles"]:
-        conditions = ["category = ?"]
+        conditions = [
+            "category = ?",
+            "(site_category IS NULL OR site_category != 'Discontinued')",
+            "(stock_status IS NULL OR stock_status NOT IN ('Discontinued', 'Out of Stock', 'Not in Feed'))",
+        ]
         params = [role]
 
         if role == "switcher":

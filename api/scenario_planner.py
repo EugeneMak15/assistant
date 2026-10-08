@@ -616,7 +616,7 @@ def _find_matching_skus_via_interfaces(
         direct_sql = (
             "SELECT p.id FROM products p "
             f"WHERE p.category IN ({dph}) "
-            "AND (p.stock_status IS NULL OR p.stock_status NOT IN ('Discontinued', 'Limited Stock')) "
+            "AND (p.stock_status IS NULL OR p.stock_status NOT IN ('Discontinued', 'Out of Stock', 'Not in Feed')) "
             "AND (p.site_category IS NULL OR p.site_category != 'Discontinued') "
             "AND p.category != 'accessory'"
         )
@@ -641,7 +641,7 @@ def _find_matching_skus_via_interfaces(
         "SELECT p.id FROM products p "
         "JOIN product_interfaces pi ON pi.sku = p.id "
         f"WHERE pi.primary_fn IN ({placeholders}) "
-        "AND (p.stock_status IS NULL OR p.stock_status NOT IN ('Discontinued', 'Limited Stock')) "
+        "AND (p.stock_status IS NULL OR p.stock_status NOT IN ('Discontinued', 'Out of Stock', 'Not in Feed')) "
         "AND (p.site_category IS NULL OR p.site_category != 'Discontinued') "
         f"{vw_name_filter}"
         "AND p.category != 'accessory' "
@@ -743,7 +743,7 @@ def _find_matching_skus_via_interfaces(
         legacy_sql = (
             f"SELECT p.id FROM products p "
             f"WHERE p.category IN ({lph}) "
-            f"AND (p.stock_status IS NULL OR p.stock_status != 'Discontinued') "
+            f"AND (p.stock_status IS NULL OR p.stock_status NOT IN ('Discontinued', 'Out of Stock', 'Not in Feed')) "
             f"AND p.category != 'accessory' "
             f"AND p.id NOT IN (SELECT sku FROM product_interfaces)"
         )
@@ -801,7 +801,7 @@ def _find_matching_skus_via_interfaces(
             )
         direct_rows = conn.execute(
             f"SELECT p.id FROM products p WHERE p.category IN ({dph}) "
-            "AND (p.stock_status IS NULL OR p.stock_status NOT IN ('Discontinued', 'Limited Stock')) "
+            "AND (p.stock_status IS NULL OR p.stock_status NOT IN ('Discontinued', 'Out of Stock', 'Not in Feed')) "
             "AND (p.site_category IS NULL OR p.site_category != 'Discontinued') "
             f"AND p.category != 'accessory'{direct_sql_extra}",
             list(direct_cats) + direct_extra_params
@@ -1036,7 +1036,7 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
             f"SELECT id, name FROM products "
             f"WHERE category IN ({placeholders}) "
             f"AND (site_category IS NULL OR site_category != 'Discontinued') "
-            f"AND (stock_status IS NULL OR stock_status NOT IN ('Discontinued', 'Limited Stock')) "
+            f"AND (stock_status IS NULL OR stock_status NOT IN ('Discontinued', 'Out of Stock', 'Not in Feed')) "
             f"AND category != 'accessory'"
         )
         # PTZ controller search must not include AV-over-IP "controller" devices

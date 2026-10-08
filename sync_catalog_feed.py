@@ -29,6 +29,8 @@ PROFILES = {
     "BG-EXH-4KFH": ("extender", "4K60", 10000, 18, "Fiber", False),
     "BG-8KCH": ("capture", "4K60", None, 48, "USB-C", True),
     "BG-AVTPG-MINI-SE": ("integration", "4K60", None, 18, "HDMI", False),
+    "BG-4K-VP-R": ("extender", "4K60", 70, 18, "HDMI", False),
+    "BG-4K-VP1616PRO": ("switcher", "4K60", 70, 18, "HDMI", False),
 }
 CAMERA_31X = {
     f"BG-ADAMO-4K{technology}31X-{color}-31"
@@ -149,7 +151,30 @@ def _base_interface(sku: str, profile: tuple) -> dict:
         interface.update(out_usb_video=1, notes="8K60 HDMI input/loop-through; USB capture output is limited to 4K60.")
     if sku == "BG-AVTPG-MINI-SE":
         interface["notes"] = "HDMI 4K60 signal generator and EDID/HDCP emulator."
+    if sku == "BG-4K-VP-R":
+        interface.update(in_hdmi=0, in_hdmi_count=0,
+                         primary_fn="extender-rx", secondary_fns="[]",
+                         notes="Receiver for BG-4K-VP1616PRO; CAT input to HDMI output, up to 70 m. Not a standalone extender kit.")
+    if sku == "BG-4K-VP1616PRO":
+        interface.update(in_hdmi_count=16, out_hdmi_count=16,
+                         primary_fn="matrix-switcher", secondary_fns=json.dumps(["video-wall", "multiview"]),
+                         notes="16x16 matrix/video-wall/multiview kit with 16 receivers; 16 HDMI and 16 CAT output ports.")
     return interface
+
+
+def _reviewed_product(sku: str, item: ET.Element, page: dict, profile: tuple) -> dict:
+    product = _base_product(sku, item, page, profile)
+    if sku == "BG-4K-VP-R":
+        product.update(inputs=1, outputs=1,
+                       input_signals=json.dumps(["CAT (VP series)"]),
+                       output_signals=json.dumps(["HDMI 2.0"]),
+                       what_it_does="Dedicated CAT receiver for the BG-4K-VP1616PRO system; 4K60 HDMI output up to 70 m.")
+    elif sku == "BG-4K-VP1616PRO":
+        product.update(inputs=16, outputs=16,
+                       input_signals=json.dumps(["HDMI 2.0"]),
+                       output_signals=json.dumps(["HDMI 2.0", "CAT (VP series)"]),
+                       what_it_does="16x16 4K60 HDMI matrix, video-wall processor and multiviewer kit with 16 receivers.")
+    return product
 
 
 def _camera_variant(conn: sqlite3.Connection, sku: str, item: ET.Element, page: dict) -> tuple[dict, dict]:
@@ -168,7 +193,8 @@ def _camera_variant(conn: sqlite3.Connection, sku: str, item: ET.Element, page: 
     description = f"4K auto-tracking PTZ camera with 31x optical zoom and {('NDI' if '4KND' in sku else 'Dante AV-H' if '4KDA' in sku else 'HDMI/SDI/USB')} connectivity."
     product.update(
         id=sku, name=title, title=title, price_usd=_price(item.findtext(G + "price")),
-        stock_status="In Stock", product_url=item.findtext("link"),
+        stock_status=("Out of Stock" if (item.findtext(G + "availability") or "").lower() in {"out_of_stock", "out of stock"} else "In Stock"),
+        product_url=item.findtext("link"),
         image_url=item.findtext(G + "image_link"),
         additional_images=json.dumps([e.text for e in item.findall(G + "additional_image_link") if e.text]),
         description=description,
@@ -192,6 +218,8 @@ def _insert(conn: sqlite3.Connection, table: str, data: dict) -> None:
 
 def sync(db_path: str, feed_url: str = FEED_URL, apply: bool = False, backup_dir: str | None = None) -> dict:
     items = _feed_items(feed_url)
+    if len(items) < 200:
+        raise ValueError(f"Shopping feed unexpectedly small: {len(items)} SKUs")
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     existing = {row[0].upper() for row in conn.execute("SELECT id FROM products")}
@@ -204,9 +232,6 @@ def sync(db_path: str, feed_url: str = FEED_URL, apply: bool = False, backup_dir
     if not apply:
         conn.close()
         return result
-    if unreviewed:
-        conn.close()
-        raise ValueError(f"Unreviewed feed SKUs; import stopped: {unreviewed}")
     if not approved:
         conn.close()
         return result
@@ -231,7 +256,7 @@ def sync(db_path: str, feed_url: str = FEED_URL, apply: bool = False, backup_dir
         if sku in CAMERA_31X:
             prepared.append(_camera_variant(conn, sku, item, page))
         else:
-            prepared.append((_base_product(sku, item, page, PROFILES[sku]), _base_interface(sku, PROFILES[sku])))
+            prepared.append((_reviewed_product(sku, item, page, PROFILES[sku]), _base_interface(sku, PROFILES[sku])))
 
     backup_path = Path(backup_dir) / f"products-pre-sync-{datetime.now(timezone.utc):%Y%m%dT%H%M%S%fZ}.db"
     backup_path.parent.mkdir(parents=True, exist_ok=True)

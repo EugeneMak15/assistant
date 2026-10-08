@@ -64,6 +64,15 @@ class AdvisorRulesTests(unittest.TestCase):
         self.assertNotIn("BG-NUTRIX", general)
         self.assertIn("BG-NUTRIX", medical)
 
+    def test_out_of_stock_is_never_a_recommendation(self):
+        self.assertEqual(
+            hard_mismatch(
+                {"id": "BG-DA-14", "name": "HDMI splitter", "stock_status": "Out of Stock"},
+                None, "one HDMI input and four displays", ["splitter"],
+            ),
+            "product is not available for purchase",
+        )
+
     def test_sanity_filter_cannot_restore_hard_mismatch(self):
         from api.universal_engine import _sanity_filter_candidates
 
@@ -152,6 +161,16 @@ class AdvisorRulesTests(unittest.TestCase):
             hard_mismatch(product, capture, "Need an 8K capture card", ["capture"]),
             "capture output resolution is below the requested format",
         )
+
+    def test_vp_receiver_and_kit_have_distinct_signal_roles(self):
+        from sync_catalog_feed import _base_interface, PROFILES
+
+        receiver = _base_interface("BG-4K-VP-R", PROFILES["BG-4K-VP-R"])
+        kit = _base_interface("BG-4K-VP1616PRO", PROFILES["BG-4K-VP1616PRO"])
+        self.assertEqual(receiver["primary_fn"], "extender-rx")
+        self.assertEqual(receiver["in_hdmi"], 0)
+        self.assertEqual(kit["in_hdmi_count"], 16)
+        self.assertEqual(kit["out_hdmi_count"], 16)
 
     def test_8k60_and_extension_distance_are_hard_requirements(self):
         self.assertEqual(requested_video("Need 8K60 video"), (True, False))

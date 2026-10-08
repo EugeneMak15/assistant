@@ -60,6 +60,7 @@ def get_candidates(session: SessionState, category: str | None = None) -> list[P
         params.append(f'%"{norm}"%')
 
     conditions.append("(site_category IS NULL OR site_category != 'Discontinued')")
+    conditions.append("(stock_status IS NULL OR stock_status NOT IN ('Discontinued', 'Out of Stock', 'Not in Feed'))")
     where = " AND ".join(conditions)
     sql = f"SELECT * FROM products WHERE {where} ORDER BY id LIMIT 8"
 
@@ -116,6 +117,7 @@ def search_products(
         params.extend([f'%{sig}%', f'%{sig}%'])
 
     conditions.append("(site_category IS NULL OR site_category != 'Discontinued')")
+    conditions.append("(stock_status IS NULL OR stock_status NOT IN ('Discontinued', 'Out of Stock', 'Not in Feed'))")
     where = " AND ".join(conditions)
     sql = f"SELECT * FROM products WHERE {where} ORDER BY id LIMIT ?"
     params.append(limit)

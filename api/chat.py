@@ -508,19 +508,29 @@ CASE 1 — ON-TOPIC follow-up (answer it):
     Reference exact SKUs and the prices given. Never invent products, prices, or specs not in the data.
     When asked "which is cheaper/most expensive", compare the prices listed and name the SKU.
 
-CASE 2 — DIFFERENT TOPIC (suggest a new chat):
+CASE 2 — REVISED REQUIREMENTS (search again in this same chat):
+  The customer corrects or adds a requirement to the SAME setup (a new output type,
+  more/fewer inputs or displays, a different resolution, distance, budget, protocol,
+  camera plus switcher instead of only one, or asks for other matching products).
+  The previous product list may now be wrong or incomplete. Do not answer from it.
+  → Set "refine_search": true. Keep "new_topic": false. Reply with a short acknowledgement
+    such as "Got it — I'll update the search with that requirement."
+
+CASE 3 — DIFFERENT TOPIC (suggest a new chat):
   The message is a clearly different need — a different device family or a new project unrelated
-  to this search (e.g. the search was about cameras and now they ask about matrix switchers, or a
-  whole new room/setup). Do NOT try to answer it from this chat's context.
+  to this search (e.g. the search was about one room and now they ask about a
+  separate room/project). Adding another device to the SAME setup is CASE 2, not CASE 3.
+  Do NOT try to answer it from this chat's context.
   → Politely say this chat is focused on <TOPIC>, and suggest starting a new chat (the "+ New chat"
     button) so the new request isn't mixed up with the previous one's history.
 
 Reply as JSON only:
 {
   "message": "your reply to the customer",
-  "new_topic": false
+  "new_topic": false,
+  "refine_search": false
 }
-Set "new_topic": true ONLY for CASE 2.
+Set "new_topic": true ONLY for CASE 3. Set "refine_search": true ONLY for CASE 2.
 """
 
 
@@ -530,7 +540,7 @@ def run_followup_turn(history: list[dict], user_message: str, results: dict) -> 
     products / technology, or detect a topic change and suggest starting a new chat.
 
     `results` = { "topic": str, "products": [ {id, name, price_usd, ...} ], "rec_text": str }
-    Returns { "message": str, "suggest_new_chat": bool }
+    Returns { "message": str, "suggest_new_chat": bool, "refine_search": bool }
     """
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
@@ -587,6 +597,7 @@ def run_followup_turn(history: list[dict], user_message: str, results: dict) -> 
     return {
         "message": data.get("message", ""),
         "suggest_new_chat": bool(data.get("new_topic")),
+        "refine_search": bool(data.get("refine_search")) and not bool(data.get("new_topic")),
     }
 
 
