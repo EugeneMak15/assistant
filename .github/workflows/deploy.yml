@@ -21,6 +21,7 @@ jobs:
             /opt/assistant/venv/bin/pip install -r requirements.txt -q
             /opt/assistant/venv/bin/python audit_catalog_specs.py --db products.db --apply --backup-dir _backup_predeploy
             /opt/assistant/venv/bin/python sync_catalog_feed.py --db products.db --apply --backup-dir _backup_predeploy
+            /opt/assistant/venv/bin/python sync_site_products.py --db products.db --apply --backup-dir _backup_predeploy
             /opt/assistant/venv/bin/python refresh_catalog_availability.py --db products.db --apply --backup-dir _backup_predeploy
             systemctl restart bzb-assistant.service
             systemctl is-active --quiet bzb-assistant.service

@@ -73,6 +73,8 @@ def hard_mismatch(product: dict, interface: dict | None, text: str, categories: 
         return "accessory, not primary equipment"
     if "NUTRIX" in sku and not MEDICAL_TERMS.search(text):
         return "medical-only camera outside a medical scenario"
+    if sku == "BG-USM-44" and re.search(r"\b(?:hdmi|video|display|monitor|screen|8k|4k)\b", text, re.I):
+        return "USB-only matrix does not route video"
     if re.search(r"\beARC\b", text, re.I):
         evidence = name + " " + (product.get("description") or "").lower()
         if "earc" not in evidence:

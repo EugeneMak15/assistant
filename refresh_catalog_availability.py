@@ -13,6 +13,7 @@ import re
 import sqlite3
 
 from sync_catalog_feed import FEED_URL, G, _camera_alias, _feed_items, _feed_price
+from site_feed_products import fetch_site_products
 
 
 def fetch_feed_products(feed_url: str = FEED_URL) -> dict[str, dict]:
@@ -29,6 +30,19 @@ def fetch_feed_products(feed_url: str = FEED_URL) -> dict[str, dict]:
             "price": _feed_price(item),
             "product_type": (item.findtext(G + "product_type") or "").strip(),
             "description": (item.findtext(G + "description") or ""),
+        }
+    # These reviewed live-site products are absent from Google Shopping XML.
+    # Keep their availability tied to the complete site product feed.
+    for sku, site in fetch_site_products().items():
+        status = site["status"]
+        category = next((path for path in site["categories"] if path.startswith("Video Switchers >")),
+                        site["categories"][0])
+        products[sku] = {
+            "availability": {"Available": "in_stock", "Pre-Order": "preorder",
+                             "Out of Stock": "out_of_stock", "Discontinued": "discontinued"}[status],
+            "price": site["price"],
+            "product_type": category,
+            "description": "",
         }
     return products
 
@@ -57,6 +71,8 @@ def plan_updates(conn: sqlite3.Connection, feed: dict[str, dict]) -> dict:
             availability = product["availability"]
             if availability in {"out_of_stock", "out of stock"}:
                 status = "Out of Stock"
+            elif availability == "discontinued":
+                status = "Discontinued"
             elif availability == "preorder":
                 status = "Pre-Order"
             else:

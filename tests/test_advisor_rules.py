@@ -28,7 +28,8 @@ class AdvisorRulesTests(unittest.TestCase):
             ["switcher"], {},
             "I have four HDMI sources, two at 8K/4K120, and 1 TV. Need a switcher.",
         )
-        self.assertEqual(skus[:3], ["BG-8K-HS41", "BG-8K-HS41A", "BG-8K-HS41AR"])
+        self.assertEqual(skus[:2], ["BG-8K-HS41A", "BG-8K-HS41AR"])
+        self.assertNotIn("BG-8K-HS41", skus)  # Absent from the authoritative feed.
         self.assertIn("BG-8K-42MA", skus)
         self.assertNotIn("BG-UHD-MVS42MA", skus)
         self.assertNotIn("BG-PSC7X2", skus)
@@ -62,7 +63,12 @@ class AdvisorRulesTests(unittest.TestCase):
             ["ptz camera"], {}, "Need a PTZ camera for a medical clinic."
         )
         self.assertNotIn("BG-NUTRIX", general)
-        self.assertIn("BG-NUTRIX", medical)
+        self.assertNotIn("BG-NUTRIX", medical)  # Medical-only, but currently absent from the feed.
+        stocked = {"id": "BG-NUTRIX", "name": "medical PTZ camera", "category": "camera",
+                   "stock_status": "In Stock"}
+        self.assertEqual(hard_mismatch(stocked, {}, "conference room"),
+                         "medical-only camera outside a medical scenario")
+        self.assertIsNone(hard_mismatch(stocked, {}, "medical clinic"))
 
     def test_out_of_stock_is_never_a_recommendation(self):
         self.assertEqual(
@@ -77,21 +83,21 @@ class AdvisorRulesTests(unittest.TestCase):
         from api.universal_engine import _sanity_filter_candidates
 
         perfect, partial = _sanity_filter_candidates(
-            ["BG-UHD-42M", "BG-8K-HS41"], ["switcher"], {}, {},
+            ["BG-UHD-42M", "BG-8K-HS41A"], ["switcher"], {}, {},
             "Need a 4x1 switcher with 8K compatibility.",
         )
-        self.assertEqual(perfect + partial, ["BG-8K-HS41"])
+        self.assertEqual(perfect + partial, ["BG-8K-HS41A"])
 
     def test_classifier_failure_does_not_restore_4k_products(self):
         from api import universal_engine
 
         with patch.object(universal_engine, "OpenAI", side_effect=RuntimeError("offline")):
             perfect, partial = universal_engine._sanity_filter_candidates(
-                ["BG-UHD-42M", "BG-8K-HS41", "BG-8K-HS41A"],
+                ["BG-UHD-42M", "BG-8K-HS41A", "BG-8K-HS41AR"],
                 ["switcher"], {}, {}, "Need a 4x1 8K switcher.",
             )
         self.assertNotIn("BG-UHD-42M", perfect + partial)
-        self.assertEqual(set(perfect + partial), {"BG-8K-HS41", "BG-8K-HS41A"})
+        self.assertEqual(set(perfect + partial), {"BG-8K-HS41A", "BG-8K-HS41AR"})
 
     def test_camera_and_switcher_both_survive_multi_device_filter(self):
         from api import universal_engine
