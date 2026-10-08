@@ -179,6 +179,22 @@ class AdvisorRulesTests(unittest.TestCase):
                      "out_hdmi_count": 16, "supports_4k": 1, "max_res": "4K60"}
         self.assertIsNone(hard_mismatch(product, interface, "16x16 seamless video wall matrix", ["switcher"]))
 
+    def test_specific_generator_category_survives_db_alias_expansion(self):
+        skus = _find_matching_skus_for_flow_a(
+            ["test pattern generator"], {}, "Test pattern generator for 8K displays"
+        )
+        self.assertIn("BG-AVTPG-MINI-G2", skus)
+
+    def test_earc_receiver_does_not_select_soundbar_only_adapter(self):
+        self.assertIsNotNone(hard_mismatch(
+            {"id": "BG-8K-SA", "name": "eARC Audio to Soundbar Adapter", "category": "audio"},
+            {"primary_fn": "converter"}, "TV eARC to my older AV receiver", ["audio extractor"],
+        ))
+        self.assertIsNone(hard_mismatch(
+            {"id": "BG-8K-AE", "name": "eARC Audio to AV Receiver Adapter", "category": "audio"},
+            {"primary_fn": "converter"}, "TV eARC to my older AV receiver", ["audio extractor"],
+        ))
+
     def test_8k60_and_extension_distance_are_hard_requirements(self):
         self.assertEqual(requested_video("Need 8K60 video"), (True, False))
         product = {"id": "BG-EXH-8K50C", "name": "8K60 HDMI extender", "category": "extender",

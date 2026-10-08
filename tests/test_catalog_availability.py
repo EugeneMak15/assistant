@@ -13,7 +13,7 @@ class CatalogAvailabilityTests(unittest.TestCase):
         self.conn = sqlite3.connect(":memory:")
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("""CREATE TABLE products (
-            id TEXT PRIMARY KEY, stock_status TEXT, site_category TEXT, price_usd REAL,
+            id TEXT PRIMARY KEY, category TEXT, stock_status TEXT, site_category TEXT, price_usd REAL,
             inputs INTEGER, outputs INTEGER, max_distance_m INTEGER, what_it_does TEXT
         )""")
         self.conn.executemany("INSERT INTO products (id, stock_status, site_category, price_usd) VALUES (?, ?, ?, ?)", [
@@ -66,6 +66,14 @@ class CatalogAvailabilityTests(unittest.TestCase):
         result = plan_updates(self.conn, feed)
         self.assertEqual(result["corrected_specs"], ["BG-EXH-8KF"])
         self.assertEqual(result["spec_updates"][0][2], 300)
+
+    def test_audio_converter_misclassified_as_sdi_is_corrected(self):
+        self.conn.execute("INSERT INTO products (id, category, stock_status) VALUES (?, ?, ?)",
+                          ("BG-8K-AE", "sdi", "In Stock"))
+        feed = {"BG-8K-AE": {
+            "availability": "in_stock", "product_type": "Audio > Audio Converters", "price": 199.0,
+        }}
+        self.assertEqual(plan_updates(self.conn, feed)["category_updates"], [("audio", "BG-8K-AE")])
 
 
 if __name__ == "__main__":

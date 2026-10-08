@@ -35,7 +35,7 @@ def fetch_feed_products(feed_url: str = FEED_URL) -> dict[str, dict]:
 
 def plan_updates(conn: sqlite3.Connection, feed: dict[str, dict]) -> dict:
     rows = {row["id"].upper(): row for row in conn.execute(
-        "SELECT id, stock_status, site_category, price_usd, inputs, outputs, max_distance_m, what_it_does FROM products"
+        "SELECT id, category, stock_status, site_category, price_usd, inputs, outputs, max_distance_m, what_it_does FROM products"
     )}
     # Some feed camera variants append -31 to an otherwise identical legacy SKU.
     # Reconcile that alias to the existing row; do not hide a still-stocked camera.
@@ -48,6 +48,7 @@ def plan_updates(conn: sqlite3.Connection, feed: dict[str, dict]) -> dict:
             aliases[sku] = original
     updates = []
     spec_updates = []
+    category_updates = []
     for sku, row in rows.items():
         product = normalized_feed.get(sku)
         if product is None:
@@ -66,6 +67,9 @@ def plan_updates(conn: sqlite3.Connection, feed: dict[str, dict]) -> dict:
             row["stock_status"], row["site_category"], row["price_usd"]
         ):
             updates.append((status, site_category, price, row["id"]))
+        if (product and row["category"] == "sdi" and site_category == "Audio"
+                and sku in {"BG-8K-AE", "BG-8K-AD", "BG-8K-AA", "BG-8K-SA"}):
+            category_updates.append(("audio", row["id"]))
         if product and sku == "BG-EXH-8KF" and re.search(r"up to 300\s*m\b", product["description"], re.I):
             accurate = ("8K60/4K120 HDMI 2.1 fiber extender; up to 300 m with OM4 fiber "
                         "(OM3: 200 m; OM2: 40 m).")
@@ -82,8 +86,10 @@ def plan_updates(conn: sqlite3.Connection, feed: dict[str, dict]) -> dict:
         "missing_from_feed": sorted(rows.keys() - normalized_feed.keys()),
         "changed_skus": [row[3] for row in updates],
         "corrected_specs": [row[4] for row in spec_updates],
+        "corrected_categories": [row[1] for row in category_updates],
         "updates": updates,
         "spec_updates": spec_updates,
+        "category_updates": category_updates,
     }
 
 
@@ -93,7 +99,7 @@ def refresh(db_path: str, apply: bool = False, backup_dir: str | None = None) ->
     conn.row_factory = sqlite3.Row
     try:
         result = plan_updates(conn, feed)
-        if apply and (result["updates"] or result["spec_updates"]):
+        if apply and (result["updates"] or result["spec_updates"] or result["category_updates"]):
             if not backup_dir:
                 raise ValueError("--backup-dir is required with --apply")
             target = Path(backup_dir)
@@ -110,10 +116,12 @@ def refresh(db_path: str, apply: bool = False, backup_dir: str | None = None) ->
                 "UPDATE products SET inputs=?, outputs=?, max_distance_m=?, what_it_does=? WHERE id=?",
                 result["spec_updates"],
             )
+            conn.executemany("UPDATE products SET category=? WHERE id=?", result["category_updates"])
             conn.commit()
             result["backup_path"] = str(backup_path)
         result.pop("updates")
         result.pop("spec_updates")
+        result.pop("category_updates")
         return result
     finally:
         conn.close()

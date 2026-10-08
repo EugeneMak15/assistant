@@ -73,6 +73,12 @@ def hard_mismatch(product: dict, interface: dict | None, text: str, categories: 
         return "accessory, not primary equipment"
     if "NUTRIX" in sku and not MEDICAL_TERMS.search(text):
         return "medical-only camera outside a medical scenario"
+    if re.search(r"\beARC\b", text, re.I):
+        evidence = name + " " + (product.get("description") or "").lower()
+        if "earc" not in evidence:
+            return "eARC support required"
+        if re.search(r"\b(?:av\s+)?receiver\b", text, re.I) and sku in {"BG-8K-AA", "BG-8K-SA"}:
+            return "adapter is intended for an amplifier or soundbar, not an AV receiver"
 
     need_8k, need_4k120 = requested_video(text)
     need_4k = bool(re.search(r"\b4\s*k(?:\b|(?=\d))", text, re.I))

@@ -557,6 +557,12 @@ def _find_matching_skus_via_interfaces(
 
     # Categories best searched directly by products.category (not via primary_fn)
     CATEGORY_DIRECT_MAP = {
+        "test pattern generator": ["integration"],
+        "signal generator": ["integration"],
+        "signal tester": ["integration"],
+        "audio extractor": ["audio"],
+        "audio converter": ["audio"],
+        "earc adapter": ["audio"],
         "capture card":    ["capture"],
         "capture":         ["capture"],
         "capture cards":   ["capture"],
@@ -620,6 +626,9 @@ def _find_matching_skus_via_interfaces(
             "AND (p.site_category IS NULL OR p.site_category != 'Discontinued') "
             "AND p.category != 'accessory'"
         )
+        if any(term in c.lower() for c in requested_categories
+               for term in ("test pattern", "signal generator", "signal tester")):
+            direct_sql += " AND (p.id LIKE 'BG-AVTPG%' OR p.name LIKE '%Signal Test%')"
         rows = conn.execute(direct_sql, list(direct_cats)).fetchall()
         conn.close()
         return _deduplicate_color_variants([r[0] for r in rows])
@@ -834,6 +843,12 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
         return merged
 
     CAT_MAP = {
+        "test pattern generator": ["integration"],
+        "signal generator": ["integration"],
+        "signal tester": ["integration"],
+        "audio extractor": ["audio"],
+        "audio converter": ["audio"],
+        "earc adapter": ["audio"],
         "matrix switcher": ["switcher"],
         "video matrix":    ["switcher"],
         "switcher":        ["switcher"],
@@ -1005,8 +1020,10 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
     try:
         # ── Fast path: use structured product_interfaces table if ready ───────
         if _interfaces_table_ready():
-            # Pass expanded db_cats so fast path also includes av_over_ip when needed
-            expanded_cats = list(db_cats)
+            # Keep the user's specific category as well as its broad DB alias.
+            # Dropping "test pattern generator" to only "integration" (or
+            # "audio extractor" to only "audio") loses the direct-category map.
+            expanded_cats = list(dict.fromkeys([*requested_categories, *db_cats]))
             skus = _find_matching_skus_via_interfaces(
                 requested_categories=expanded_cats,
                 answers=answers,
