@@ -1045,7 +1045,17 @@ function resolveSkuImg(sku) {
 }
 
 function renderText(text) {
-  const escaped = text
+  const markdownLinks = [];
+  const withTokens = text.replace(/\[([^\]]+)\]\((https:\/\/bzbgear\.com\/[^\s)]+)\)/gi, (match, label, rawUrl) => {
+    try {
+      const url = new URL(rawUrl);
+      if (url.protocol !== 'https:' || url.hostname !== 'bzbgear.com') return match;
+      const token = `__BZB_LINK_${markdownLinks.length}__`;
+      markdownLinks.push({label, url: url.href});
+      return token;
+    } catch (_) { return match; }
+  });
+  const escaped = withTokens
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -1059,6 +1069,13 @@ function renderText(text) {
       return url
         ? `<a href="${url}" target="_blank" rel="noopener noreferrer" class="sku-link">${match}</a>`
         : `<strong>${match}</strong>`;
+    })
+    .replace(/__BZB_LINK_(\d+)__/g, (_, index) => {
+      const link = markdownLinks[Number(index)];
+      if (!link) return '';
+      const label = link.label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const href = link.url.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="sku-link">${label}</a>`;
     });
 }
 
