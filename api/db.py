@@ -75,7 +75,12 @@ def save_chat_result(session_id: str, result: dict) -> None:
     conn = get_conn()
     row = conn.execute("SELECT results_json FROM chat_results WHERE session_id=?", (session_id,)).fetchone()
     results = json.loads(row[0]) if row else []
-    results.append(result)
+    # A browser refresh can reconnect to the same pending SSE search. Keep one
+    # result block per conversational position, replacing a partial prior run.
+    if results and results[-1].get("history_index") == result.get("history_index"):
+        results[-1] = result
+    else:
+        results.append(result)
     conn.execute("""INSERT INTO chat_results (session_id, results_json) VALUES (?, ?)
         ON CONFLICT(session_id) DO UPDATE SET results_json=excluded.results_json""",
         (session_id, json.dumps(results)))

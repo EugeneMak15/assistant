@@ -24,6 +24,9 @@ class ChatResumeTests(unittest.TestCase):
                 db.save_chat_result("sid-1", {
                     "history_index": 4, "skus": ["BG-OTHER"], "rec_text": "Revised result",
                 })
+                db.save_chat_result("sid-1", {
+                    "history_index": 4, "skus": ["BG-OTHER"], "rec_text": "Completed after reconnect",
+                })
 
                 scenario, history = db.load_chat_state("sid-1")
                 self.assertFalse(scenario["_refining_search"])
@@ -32,6 +35,7 @@ class ChatResumeTests(unittest.TestCase):
                 results = db.load_chat_results("sid-1")
                 self.assertEqual([r["history_index"] for r in results], [2, 4])
                 self.assertEqual(results[-1]["skus"], ["BG-OTHER"])
+                self.assertEqual(results[-1]["rec_text"], "Completed after reconnect")
 
 
 if __name__ == "__main__":
