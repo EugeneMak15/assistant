@@ -33,6 +33,14 @@ def init_chat_state_table():
             updated_at REAL DEFAULT (unixepoch('now'))
         )
     """)
+    conn.execute("""CREATE TABLE IF NOT EXISTS chat_results (
+        session_id TEXT PRIMARY KEY,
+        results_json TEXT NOT NULL
+    )""")
+    conn.execute("""CREATE TABLE IF NOT EXISTS chat_session_fields (
+        session_id TEXT PRIMARY KEY,
+        fields_json TEXT NOT NULL
+    )""")
     conn.commit()
     conn.close()
 
@@ -61,6 +69,41 @@ def load_chat_state(session_id: str) -> tuple[dict, list]:
         json.loads(row["scenario_json"] or "{}"),
         json.loads(row["history_json"] or "[]"),
     )
+
+
+def save_chat_result(session_id: str, result: dict) -> None:
+    conn = get_conn()
+    row = conn.execute("SELECT results_json FROM chat_results WHERE session_id=?", (session_id,)).fetchone()
+    results = json.loads(row[0]) if row else []
+    results.append(result)
+    conn.execute("""INSERT INTO chat_results (session_id, results_json) VALUES (?, ?)
+        ON CONFLICT(session_id) DO UPDATE SET results_json=excluded.results_json""",
+        (session_id, json.dumps(results)))
+    conn.commit()
+    conn.close()
+
+
+def load_chat_results(session_id: str) -> list[dict]:
+    conn = get_conn()
+    row = conn.execute("SELECT results_json FROM chat_results WHERE session_id=?", (session_id,)).fetchone()
+    conn.close()
+    return json.loads(row[0]) if row else []
+
+
+def save_session_fields(session_id: str, fields: dict) -> None:
+    conn = get_conn()
+    conn.execute("""INSERT INTO chat_session_fields (session_id, fields_json) VALUES (?, ?)
+        ON CONFLICT(session_id) DO UPDATE SET fields_json=excluded.fields_json""",
+        (session_id, json.dumps(fields)))
+    conn.commit()
+    conn.close()
+
+
+def load_session_fields(session_id: str) -> dict:
+    conn = get_conn()
+    row = conn.execute("SELECT fields_json FROM chat_session_fields WHERE session_id=?", (session_id,)).fetchone()
+    conn.close()
+    return json.loads(row[0]) if row else {}
 
 def get_chroma():
     """Return ChromaDB collection (None if not yet ingested)."""

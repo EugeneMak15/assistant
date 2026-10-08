@@ -25,7 +25,9 @@ from api.layer3 import get_recommendation
 from api.universal_engine import get_universal_recommendation, get_flow_a_recommendation, parse_approaches
 from api.chat import run_chat_turn, get_opening_message
 from api.chain import build_chain, chain_to_text
-from api.db import get_conn, row_to_dict, init_chat_state_table, save_chat_state, load_chat_state
+from api.db import (get_conn, row_to_dict, init_chat_state_table, save_chat_state,
+                    load_chat_state, save_chat_result, load_chat_results,
+                    save_session_fields, load_session_fields)
 from api.usage import init_usage_table, track_session, get_session_usage
 
 init_chat_state_table()
@@ -290,12 +292,29 @@ def chat_start():
     _chat_histories[session.session_id] = []
     _scenario_state[session.session_id] = {}
     save_chat_state(session.session_id, {}, [])
+    save_session_fields(session.session_id, session.model_dump())
     opening = get_opening_message()
     return ChatResponse(
         message=opening["message"],
         chips=opening["chips"],
         session=session,
     )
+
+
+@app.get("/chat/resume/{session_id}", tags=["Chat"])
+def chat_resume(session_id: str):
+    """Restore a browser chat after refresh without starting a new session."""
+    _scenario, history = load_chat_state(session_id)
+    if not history:
+        raise HTTPException(404, "Session not found")
+    session = get_session(session_id) or restore_session(session_id, load_session_fields(session_id))
+    results = load_chat_results(session_id)
+    for result in results:
+        if "products" not in result:
+            result["products"] = [p.model_dump() for p in _fetch_products_by_skus(result.get("skus", []))]
+    pending = _pending_recs.get(session_id, {}).get("status") == "context_ready"
+    return {"session": session.model_dump(), "history": history, "results": results,
+            "pending": pending, "interrupted": bool(_scenario.get("_refining_search")) and not pending}
 
 
 @app.post("/chat/message", response_model=ChatResponse, tags=["Chat"])
@@ -325,7 +344,7 @@ def _chat_message(body: ChatMessage):
         # id has persisted chat history, restore the session so the conversation
         # continues with its full context instead of starting over.
         if _chat_histories.get(sid):
-            session = restore_session(sid)
+            session = restore_session(sid, load_session_fields(sid))
         else:
             raise HTTPException(404, "Session not found. Call /chat/start first.")
 
@@ -337,6 +356,11 @@ def _chat_message(body: ChatMessage):
     # clearly different need, the handler flags suggest_new_chat so the UI can offer
     # to start fresh (avoids mixing unrelated history).
     fres = _session_results.get(sid)
+    if not fres and not _scenario_state.get(sid, {}).get("_refining_search"):
+        saved_results = load_chat_results(sid)
+        if saved_results:
+            fres = saved_results[-1]
+            _session_results[sid] = fres
     refining_search = False
     if fres and fres.get("skus"):
         from api.chat import run_followup_turn
@@ -359,6 +383,7 @@ def _chat_message(body: ChatMessage):
             # consultant recalculate the plan and run a fresh catalog search.
             # Do not record the classifier acknowledgement as a separate turn.
             refining_search = True
+            _scenario_state.setdefault(sid, {})["_refining_search"] = True
         else:
             history.extend([
                 {"role": "user", "content": body.message},
@@ -409,6 +434,7 @@ def _chat_message(body: ChatMessage):
     state_update = {k: v for k, v in result.get("state_update", {}).items() if v is not None}
     if state_update:
         session = update_session(sid, state_update)
+        save_session_fields(sid, session.model_dump())
 
     # Commit the turn only after it succeeded. A failed request can then be
     # retried in the same session without leaving an orphaned user message.
@@ -474,8 +500,8 @@ def _chat_message(body: ChatMessage):
         _session_results[sid] = {"topic": _topic, "skus": [], "rec_text": ""}
 
         # Сбрасываем план сессии
-        _scenario_state[sid] = {}
-        save_chat_state(sid, {}, history)
+        _scenario_state[sid] = {"_refining_search": True}
+        save_chat_state(sid, _scenario_state[sid], history)
 
         return ChatResponse(
             message=result["message"],
@@ -672,10 +698,22 @@ def stream_recommendation_sse(session_id: str):
         full_text = []
         collected_skus: list[str] = []   # SKUs actually shown — used for follow-up Q&A
 
+        result_saved = False
+
         def _save_followup():
+            nonlocal result_saved
             if session_id in _session_results:
                 _session_results[session_id]["skus"] = collected_skus
                 _session_results[session_id]["rec_text"] = "".join(full_text)
+                if not result_saved and (collected_skus or full_text):
+                    _session_results[session_id]["history_index"] = len(_chat_histories.get(session_id, []))
+                    _session_results[session_id]["products"] = [
+                        p.model_dump() for p in _fetch_products_by_skus(collected_skus)
+                    ]
+                    save_chat_result(session_id, _session_results[session_id])
+                    _scenario_state.setdefault(session_id, {}).pop("_refining_search", None)
+                    save_chat_state(session_id, _scenario_state[session_id], _chat_histories.get(session_id, []))
+                    result_saved = True
 
         if flow in ("product_selection", "hybrid"):
             gen = stream_flow_a_recommendation(

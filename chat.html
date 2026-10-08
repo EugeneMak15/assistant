@@ -747,6 +747,7 @@
 
 <script>
 const API = '';
+const ACTIVE_CHAT_KEY = 'bzb-advisor-active-session';
 let sessionId = null;
 let chatBusy = false;
 
@@ -2103,9 +2104,42 @@ function updateSessionBadge(sid) {
 
 async function init(silent = false) {
   try {
+    if (!silent) {
+      let previous = null;
+      try { previous = localStorage.getItem(ACTIVE_CHAT_KEY); } catch (_) {}
+      if (previous) {
+        const resumed = await fetch(`${API}/chat/resume/${encodeURIComponent(previous)}`);
+        if (resumed.ok) {
+          const saved = await resumed.json();
+          sessionId = saved.session?.session_id;
+          updateSessionBadge(sessionId);
+          addMessage("Hi, I'm Alex. What AV equipment or setup do you need?", 'bot');
+          const results = [...(saved.results || [])].sort((a, b) => (a.history_index || 0) - (b.history_index || 0));
+          let nextResult = 0;
+          const history = saved.history || [];
+          for (let i = 0; i <= history.length; i++) {
+            while (nextResult < results.length && (results[nextResult].history_index || 0) <= i) {
+              restoreRecommendation(results[nextResult++]);
+            }
+            if (i < history.length) addMessage(history[i].content, history[i].role === 'user' ? 'user' : 'bot');
+          }
+          if (saved.pending) {
+            setChatBusy(true);
+            startStreamingRecommendation(sessionId);
+          } else if (saved.interrupted) {
+            addMessage('The search was interrupted. Your conversation is saved — please ask me to search again.', 'bot');
+          }
+          refreshSessionCost();
+          scrollToBottom();
+          return true;
+        }
+        try { localStorage.removeItem(ACTIVE_CHAT_KEY); } catch (_) {}
+      }
+    }
     const res = await fetch(`${API}/chat/start`, { method: 'POST' });
     const data = await res.json();
     sessionId = data.session?.session_id;
+    try { if (sessionId) localStorage.setItem(ACTIVE_CHAT_KEY, sessionId); } catch (_) {}
     updateSessionBadge(sessionId);
     document.getElementById('session-cost-value').textContent = '$0.00000';
     document.getElementById('session-cost').title =
@@ -2122,8 +2156,36 @@ async function init(silent = false) {
   }
 }
 
+function restoreRecommendation(result) {
+  const products = result.products || [];
+  for (const p of products) {
+    if (p.id && p.product_url) skuUrlMap[p.id.toUpperCase()] = p.product_url;
+    if (p.id && p.image_url) skuImgMap[p.id.toUpperCase()] = p.image_url;
+  }
+  const wrapper = document.createElement('div');
+  wrapper.className = 'msg bot';
+  const body = document.createElement('div');
+  body.style.cssText = 'flex:1;min-width:0';
+  const label = document.createElement('div');
+  label.className = 'bubble';
+  label.textContent = `Found ${products.length} product${products.length === 1 ? '' : 's'}`;
+  body.appendChild(label);
+  if (products.length) body.appendChild(buildProductCards(products));
+  if (result.rec_text) {
+    const rec = document.createElement('div');
+    rec.className = 'rec-block';
+    rec.innerHTML = renderFinalRec(result.rec_text);
+    body.appendChild(rec);
+    lastRecommendationText = result.rec_text;
+  }
+  wrapper.innerHTML = '<div class="avatar">🤖</div>';
+  wrapper.appendChild(body);
+  document.getElementById('chat').appendChild(wrapper);
+}
+
 async function resetChat() {
   if (chatBusy) return;
+  try { localStorage.removeItem(ACTIVE_CHAT_KEY); } catch (_) {}
   stopCostPolling(false);
   sessionId = null;
   updateSessionBadge(null);
