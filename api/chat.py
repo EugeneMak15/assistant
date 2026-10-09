@@ -400,6 +400,17 @@ def run_chat_turn(
     msg      = data.get("message", "")
     sq       = data.get("search_query", "")
 
+    # A connector name ("HDMI") is not an answer to a resolution question.
+    # Make the missing choice explicit and clickable for HDMI KVM shoppers.
+    kvm_user_text = " ".join(h.get("content", "") for h in history if h.get("role") == "user") + " " + user_message
+    if re.search(r"\bkvm\b", kvm_user_text, re.I) and not re.search(
+        r"\b(?:1080\s*p?|4\s*k|8\s*k|2160\s*p?)(?:\b|(?=\d))", kvm_user_text, re.I
+    ):
+        intent.pop("resolution", None)
+        ready = False
+        msg = "What video resolution do you need: 1080p, 4K, or 8K?"
+        chips = ["1080p", "4K", "8K", "Not sure"]
+
     # ── Reliability guardrail (deterministic, overrides a stalling model) ──────
     # The model sometimes asks a redundant "which device / what use case" question
     # even though every required camera spec is already on the table. For a

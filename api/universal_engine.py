@@ -520,6 +520,11 @@ def _build_product_context(products: list[dict]) -> str:
             lines.append(color_info)
         if p.get("price_usd"):
             lines.append(f"Price: ${float(p['price_usd']):.0f}")
+        if p.get("stock_status"):
+            availability = p["stock_status"]
+            if availability == "Pre-Order" and p.get("shipping_estimate"):
+                availability += f" ({p['shipping_estimate']}, per product page)"
+            lines.append(f"Availability: {availability}")
 
         # ── Use structured interface data if available ─────────────────────
         iface = get_interface(sku)
@@ -602,6 +607,21 @@ def _build_product_context(products: list[dict]) -> str:
             pass
         lines.append("")
     return "\n".join(lines)
+
+
+def _verified_shipping_suffix(answer: str, products: list[dict]) -> str:
+    """Keep a verified preorder ETA visible even when the model omits it."""
+    import re as _re
+    match = _re.search(r"Best pick for your case:\s*(BG-[\w-]+)", answer, _re.I)
+    sku = match.group(1).upper() if match else (products[0]["id"] if len(products) == 1 else None)
+    product = next((p for p in products if p["id"].upper() == sku), None)
+    if not product or product.get("stock_status") != "Pre-Order":
+        return ""
+    estimate = product.get("shipping_estimate") or ""
+    timing = _re.sub(r"^Shipping\s+", "", estimate, flags=_re.I).strip()
+    if not timing or timing.casefold() in answer.casefold():
+        return ""
+    return f"\n\nEstimated shipping: {timing} (per product page)."
 
 
 SANITY_FILTER_SYSTEM = """You are a strict AV product pre-screener. Filter candidates ruthlessly — only keep products that genuinely fit.
@@ -959,6 +979,8 @@ Keep the response under 80 words. The product cards link to full specifications.
 For cameras, describe a model family once and state available zoom and color configurations.
 Do not repeat near-identical SKU variants in prose.
 Mention at most three distinct options, each with one sentence about its practical difference.
+If a Pre-Order product has a verified shipping estimate in the catalog, include it briefly.
+If no estimate is provided, do not invent one.
 
 End with a clear "Best pick for your case" recommendation with a specific reason tied to what the customer told you.
 
@@ -1148,6 +1170,7 @@ def get_flow_a_recommendation(
     record_usage(resp)
 
     answer = resp.choices[0].message.content
+    answer += _verified_shipping_suffix(answer, perfect_products + partial_products)
     found_skus = sorted(set(_SKU_RE.findall(answer.upper())))
     return {
         "answer": answer,
@@ -1259,6 +1282,7 @@ def stream_flow_a_recommendation(
         stream_options={"include_usage": True},
     )
 
+    streamed_text = []
     for chunk in stream:
         if chunk.usage:
             record_usage(chunk)
@@ -1266,8 +1290,14 @@ def stream_flow_a_recommendation(
             continue
         delta = chunk.choices[0].delta.content or ""
         if delta:
+            streamed_text.append(delta)
             yield ("text", delta)
 
+    shipping_note = _verified_shipping_suffix(
+        "".join(streamed_text), perfect_products + partial_products
+    )
+    if shipping_note:
+        yield ("text", shipping_note)
     yield ("done", "")
 
 

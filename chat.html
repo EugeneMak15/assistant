@@ -1474,7 +1474,8 @@ function buildProductCards(candidates) {
     if (p.stock_status) {
       const stock = document.createElement('div');
       stock.className = 'product-card-stock';
-      stock.textContent = p.stock_status;
+      stock.textContent = p.stock_status === 'Pre-Order' && p.shipping_estimate
+        ? `${p.stock_status} · ${p.shipping_estimate}` : p.stock_status;
       body.appendChild(stock);
     }
 
@@ -2000,8 +2001,14 @@ function startStreamingRecommendation(sid) {
     body.innerHTML = `
       <span class="product-card-sku">${p.id}</span>
       <div class="product-card-name">${(p.name || p.id).substring(0, 80)}</div>
-      ${p.price_usd ? `<div class="product-card-price">$${p.price_usd.toLocaleString()}</div>` : ''}
-      ${p.stock_status ? `<div class="product-card-stock">${p.stock_status}</div>` : ''}`;
+      ${p.price_usd ? `<div class="product-card-price">$${p.price_usd.toLocaleString()}</div>` : ''}`;
+    if (p.stock_status) {
+      const stock = document.createElement('div');
+      stock.className = 'product-card-stock';
+      stock.textContent = p.stock_status === 'Pre-Order' && p.shipping_estimate
+        ? `${p.stock_status} · ${p.shipping_estimate}` : p.stock_status;
+      body.appendChild(stock);
+    }
     card.appendChild(body);
     return card;
   }

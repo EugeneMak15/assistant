@@ -82,6 +82,8 @@ def sync(db_path: str, apply: bool = False, backup_dir: str | None = None,
         finally:
             backup.close()
         conn.execute("BEGIN IMMEDIATE")
+        if "shipping_estimate" not in {row[1] for row in conn.execute("PRAGMA table_info(products)")}:
+            conn.execute("ALTER TABLE products ADD COLUMN shipping_estimate TEXT")
         for sku, profile in PRODUCT_PROFILES.items():
             site = site_products[sku]
             categories = site["categories"]
@@ -99,6 +101,7 @@ def sync(db_path: str, apply: bool = False, backup_dir: str | None = None,
                 "resolutions": json.dumps(profile["resolutions"]),
                 "max_bandwidth_gbps": profile["bandwidth"],
                 "price_usd": site["price"], "stock_status": site["status"],
+                "shipping_estimate": site.get("shipping_estimate") if site["status"] == "Pre-Order" else None,
                 "description": profile["description"], "what_it_does": profile["description"],
                 "features": json.dumps(site["features"]), "specs_json": json.dumps(site["specs"]),
                 "product_url": site["link"], "image_url": site["image_url"],

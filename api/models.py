@@ -52,6 +52,7 @@ class Product(BaseModel):
     max_distance_m: Optional[int]
     price_usd: Optional[float] = None
     stock_status: Optional[str] = None
+    shipping_estimate: Optional[str] = None
     product_url: Optional[str] = None
     image_url: Optional[str] = None
     manual_file: Optional[str]

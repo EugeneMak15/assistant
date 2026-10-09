@@ -63,9 +63,34 @@ class ChatContextTests(unittest.TestCase):
                    "num_outputs": 1, "resolution": "4K", "signal_type": "HDMI"}}
         mock_openai.return_value.chat.completions.create.return_value = SimpleNamespace(
             choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(payload)))])
-        result = run_chat_turn([], "I need an HDMI KVM switch for 4 computers and one monitor", {})
+        result = run_chat_turn([], "I need a 4K HDMI KVM switch for 4 computers and one monitor", {})
         self.assertEqual(result["_scenario_plan"]["requested_categories"], ["kvm switch"])
         self.assertIn("4 computers", result["search_query"])
+
+    @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
+    @patch("api.chat.OpenAI")
+    def test_kvm_resolution_question_has_explicit_choices_after_hdmi_answer(self, mock_openai):
+        payload = {"message": "What resolution?", "chips": [], "ready_to_search": False,
+                   "intent": {"flow": "product_selection", "requested_categories": ["kvm switch"],
+                              "resolution": "4K"}}
+        mock_openai.return_value.chat.completions.create.return_value = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(payload)))])
+        opening = "I need an HDMI KVM switch so I can control 4 computers from one keyboard, mouse and monitor."
+        result = run_chat_turn([], opening, {})
+        self.assertEqual(result["chips"][:3], ["1080p", "4K", "8K"])
+        self.assertIn("resolution", result["message"].lower())
+        self.assertNotIn("Resolution?", result["_scenario_answers"])
+        payload["ready_to_search"] = True
+        payload["search_query"] = "4-port HDMI KVM 4K"
+        mock_openai.return_value.chat.completions.create.return_value = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(payload)))])
+        followup = run_chat_turn([
+            {"role": "user", "content": opening},
+            {"role": "assistant", "content": result["message"]},
+            {"role": "user", "content": "HDMI"},
+            {"role": "assistant", "content": result["message"]},
+        ], "4K", {})
+        self.assertTrue(followup["ready_to_search"])
 
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     @patch("api.chat.OpenAI")

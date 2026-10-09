@@ -55,6 +55,16 @@ class AdvisorRulesTests(unittest.TestCase):
             "I need two sources on eight displays with independent routing."
         ))
 
+    def test_verified_preorder_shipping_note_is_not_invented_or_repeated(self):
+        from api.universal_engine import _verified_shipping_suffix
+
+        product = {"id": "BG-8K-28A", "stock_status": "Pre-Order",
+                   "shipping_estimate": "Shipping Q4 2026"}
+        answer = "Best pick for your case: BG-8K-28A - Fits all eight displays."
+        self.assertIn("Q4 2026", _verified_shipping_suffix(answer, [product]))
+        self.assertEqual(_verified_shipping_suffix(answer + " Ships Q4 2026.", [product]), "")
+        self.assertEqual(_verified_shipping_suffix(answer, [{**product, "shipping_estimate": None}]), "")
+
     def test_usb_peripheral_matrix_does_not_search_hdmi_matrices(self):
         examples = [
             (["usb matrix switcher"], "4x4 USB matrix switcher"),

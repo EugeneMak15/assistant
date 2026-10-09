@@ -5,12 +5,17 @@ import tempfile
 from pathlib import Path
 import unittest
 
-from site_feed_products import parse_site_feed
+from site_feed_products import parse_shipping_estimate, parse_site_feed
 from sync_site_products import sync
 from api.product_rules import hard_mismatch
 
 
 class SiteFeedProductTests(unittest.TestCase):
+    def test_shipping_estimate_comes_only_from_product_badge(self):
+        page = b'<div class="mark_label"> Shipping Q4 <b>2026</b> </div>'
+        self.assertEqual(parse_shipping_estimate(page), "Shipping Q4 2026")
+        self.assertIsNone(parse_shipping_estimate(b'<p>Shipping Q4 2026</p>'))
+
     def test_parse_reviewed_items_and_ignore_trailing_script(self):
         filler = "<item><id>OTHER</id></item>" * 200
         reviewed = "".join(
@@ -51,6 +56,7 @@ class SiteFeedProductTests(unittest.TestCase):
             ):
                 products[sku] = {"title": sku, "link": f"https://bzbgear.com/product/{sku.lower()}/",
                                  "price": 599.0, "status": status, "categories": [category],
+                                 "shipping_estimate": "Shipping Q4 2026" if status == "Pre-Order" else None,
                                  "features": ["Reviewed"], "specs": {"Bandwidth": "48Gbps"},
                                  "image_url": None, "additional_images": [], "manual_url": None,
                                  "brochure_url": None}
@@ -61,7 +67,16 @@ class SiteFeedProductTests(unittest.TestCase):
             try:
                 self.assertEqual(conn.execute("SELECT count(*) FROM products").fetchone()[0], 3)
                 self.assertEqual(conn.execute("SELECT stock_status FROM products WHERE id='BG-USM-44'").fetchone()[0], "Pre-Order")
+                self.assertEqual(conn.execute("SELECT shipping_estimate FROM products WHERE id='BG-8K-28A'").fetchone()[0], "Shipping Q4 2026")
                 self.assertEqual(conn.execute("SELECT max_res,primary_fn,ctrl_ip FROM product_interfaces WHERE sku='BG-8K-KVM21A'").fetchone(), ("8K60", "kvm-switcher", 0))
+            finally:
+                conn.close()
+
+            products["BG-8K-28A"]["shipping_estimate"] = None
+            sync(db_path, apply=True, backup_dir=directory, site_products=products)
+            conn = sqlite3.connect(db_path)
+            try:
+                self.assertIsNone(conn.execute("SELECT shipping_estimate FROM products WHERE id='BG-8K-28A'").fetchone()[0])
             finally:
                 conn.close()
 
