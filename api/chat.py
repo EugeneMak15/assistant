@@ -327,7 +327,7 @@ def run_chat_turn(
     One turn of the conversation. Returns:
     { message, chips, state_update, ready_to_search, search_query, _scenario_plan, _scenario_answers }
     """
-    from .product_rules import is_usb_matrix_request
+    from .product_rules import is_usb_matrix_request, is_selected_source_distribution, requested_ports, requested_distance_m
     user_text = " ".join(h.get("content", "") for h in history if h.get("role") == "user") + " " + user_message
     if is_usb_matrix_request(user_text):
         return _run_usb_matrix_turn(history, user_message)
@@ -451,6 +451,23 @@ def run_chat_turn(
         flow = "product_selection"
         if ready:
             sq = (_user_text + " " + sq).strip()
+    if is_selected_source_distribution(_user_text):
+        # The user described one selected signal mirrored to every display.
+        # Preserve that topology even if the model calls it a 2x8 matrix.
+        categories = ["splitter"]
+        flow = "product_selection"
+        intent["equipment_type"] = "splitter"
+        inputs, outputs = requested_ports(_user_text)
+        if inputs:
+            intent["num_inputs"] = inputs
+        if outputs:
+            intent["num_outputs"] = outputs
+        if requested_distance_m(_user_text) is not None:
+            ready = True
+        if ready:
+            msg = "Got it — I'll find a splitter for the selected source and all displays."
+            chips = []
+        sq = _user_text.strip()
     if intent.get("equipment_type") and not categories:
         categories = [intent["equipment_type"]]
 

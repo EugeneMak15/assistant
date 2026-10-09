@@ -14,7 +14,7 @@ except ImportError:
     sys.modules["openai"] = types.SimpleNamespace(OpenAI=object)
 
 from api.scenario_planner import _find_matching_skus_for_flow_a
-from api.product_rules import camera_family_key, camera_family_variants, hard_mismatch, requested_video
+from api.product_rules import camera_family_key, camera_family_variants, hard_mismatch, is_selected_source_distribution, requested_ports, requested_video
 from api import db
 
 
@@ -41,6 +41,19 @@ class AdvisorRulesTests(unittest.TestCase):
         )
         self.assertTrue(skus)
         self.assertTrue(all("8K" in sku for sku in skus))
+
+    def test_selected_8k_source_to_all_displays_is_a_splitter(self):
+        question = "I have two 8K HDMI sources and need to send one of them to eight displays. 15 feet."
+        self.assertTrue(is_selected_source_distribution(question))
+        self.assertEqual(requested_ports(question), (2, 8))
+        for category in (["splitter"], ["matrix switcher"], ["switcher"]):
+            with self.subTest(category=category):
+                skus = _find_matching_skus_for_flow_a(category, {}, question)
+                self.assertIn("BG-8K-28A", skus)
+                self.assertNotIn("BG-UHD-DA2X8", skus)
+        self.assertFalse(is_selected_source_distribution(
+            "I need two sources on eight displays with independent routing."
+        ))
 
     def test_usb_peripheral_matrix_does_not_search_hdmi_matrices(self):
         examples = [

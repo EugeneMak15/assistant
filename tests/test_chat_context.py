@@ -69,6 +69,30 @@ class ChatContextTests(unittest.TestCase):
 
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     @patch("api.chat.OpenAI")
+    def test_selected_source_distribution_survives_matrix_rephrasing(self, mock_openai):
+        opening = "I have two 8K HDMI sources and need to send one of them to eight displays."
+        for wrong_category in ("matrix switcher", "switcher"):
+            with self.subTest(wrong_category=wrong_category):
+                payload = {
+                    "message": "Let me find a 2x8 HDMI matrix.", "chips": [],
+                    "ready_to_search": True, "search_query": "2x8 HDMI matrix for 8K signals",
+                    "intent": {"flow": "product_selection", "requested_categories": [wrong_category],
+                               "num_inputs": 2, "num_outputs": 8, "resolution": "8K"},
+                }
+                mock_openai.return_value.chat.completions.create.return_value = SimpleNamespace(
+                    choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(payload)))])
+                result = run_chat_turn(
+                    [{"role": "user", "content": opening},
+                     {"role": "assistant", "content": "How far is the longest run?"}],
+                    "15 feet", {},
+                )
+                self.assertTrue(result["ready_to_search"])
+                self.assertEqual(result["_scenario_plan"]["requested_categories"], ["splitter"])
+                self.assertIn("one of them to eight displays", result["search_query"])
+                self.assertNotIn("matrix", result["message"].lower())
+
+    @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
+    @patch("api.chat.OpenAI")
     def test_range_intent_does_not_break_session_update(self, mock_openai):
         payload = {
             "message": "Got it — how far is the furthest display?",

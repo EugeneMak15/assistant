@@ -827,7 +827,10 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
     and the customer's specs. These SKUs will be passed as mandatory to the LLM so it can't
     silently omit any of them.
     """
-    from api.product_rules import is_usb_matrix_request, requested_kvm_hosts
+    from api.product_rules import is_usb_matrix_request, is_selected_source_distribution, requested_kvm_hosts
+
+    if is_selected_source_distribution(question):
+        requested_categories = ["splitter"]
 
     # USB peripheral matrices have no HDMI ports; the video-matrix SQL path
     # would reject them and return unrelated HDMI hardware instead.

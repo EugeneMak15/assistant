@@ -28,14 +28,30 @@ def requested_video(text: str) -> tuple[bool, bool]:
     )
 
 
+def is_selected_source_distribution(text: str) -> bool:
+    """A selected source mirrored to displays is a splitter, not a matrix."""
+    if not re.search(r"\b(?:sources?|inputs?)\b", text, re.I) or not re.search(
+        r"\b(?:displays?|screens?|tvs?|outputs?)\b", text, re.I
+    ):
+        return False
+    if re.search(r"\b(?:independent(?:ly)?|different sources? (?:to|on|for) (?:each|different))\b", text, re.I):
+        return False
+    return bool(re.search(
+        r"\b(?:one of (?:them|the (?:\w+\s+){0,2}sources?)|"
+        r"either (?:source|input)|one selected (?:source|input)|"
+        r"select (?:one|either) (?:source|input))\b",
+        text, re.I,
+    ))
+
+
 def requested_ports(text: str) -> tuple[int | None, int | None]:
     matrix = re.search(r"\b(\d{1,2})\s*[x×]\s*(\d{1,2})\b", text, re.I)
     if matrix:
         return int(matrix.group(1)), int(matrix.group(2))
-    words = {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5", "six": "6"}
+    words = {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5", "six": "6", "eight": "8"}
     for word, number in words.items():
-        text = re.sub(rf"\b{word}\s+(?=(?:hdmi\s*)?(?:sources?|inputs?|tvs?|displays?|screens?)\b)", number + " ", text, flags=re.I)
-    inputs = re.search(r"\b(\d{1,2})\s*(?:hdmi\s*)?(?:sources?|inputs?|источник\w*)\b", text, re.I)
+        text = re.sub(rf"\b{word}\s+(?=(?:\d+\s*k\s*)?(?:hdmi\s*)?(?:sources?|inputs?|tvs?|displays?|screens?)\b)", number + " ", text, flags=re.I)
+    inputs = re.search(r"\b(\d{1,2})\s*(?:\d+\s*k\s*)?(?:hdmi\s*)?(?:sources?|inputs?|источник\w*)\b", text, re.I)
     outputs = re.search(r"\b(\d{1,2})\s*(?:tvs?|displays?|screens?|outputs?|монитор\w*|экран\w*|телевизор\w*)\b", text, re.I)
     one_display = bool(re.search(r"\b(?:one|single|один|одно|одного)\s+(?:tv|display|screen|телевизор\w*|экран\w*)\b", text, re.I))
     return int(inputs.group(1)) if inputs else None, int(outputs.group(1)) if outputs else (1 if one_display else None)
@@ -126,7 +142,7 @@ def hard_mismatch(product: dict, interface: dict | None, text: str, categories: 
             and not re.search(r"\b(?:input|loop.?out|pass.?through)\b", text, re.I)):
         if (interface.get("max_res") or "").upper() not in ({"8K60", "8K30"} if need_8k else {"4K120", "8K30", "8K60"}):
             return "capture output resolution is below the requested format"
-    video_device = not cats or any(term in cats for term in ("switch", "matrix", "camera", "encoder", "decoder", "extender", "av over ip"))
+    video_device = not cats or any(term in cats for term in ("switch", "matrix", "splitter", "distribution", "camera", "encoder", "decoder", "extender", "av over ip"))
     if video_device and need_8k:
         evidence = name + " " + " ".join(_json_list(product.get("features"))).lower()
         if interface.get("supports_8k") != 1 or "8K" not in evidence.upper():
@@ -153,6 +169,15 @@ def hard_mismatch(product: dict, interface: dict | None, text: str, categories: 
 
     if "encoder" in cats and product.get("category") != "encoder_decoder":
         return "dedicated streaming encoder required"
+
+    if "splitter" in cats or "distribution amp" in cats:
+        if interface.get("primary_fn") != "splitter":
+            return "video splitter required"
+        inputs, outputs = requested_ports(text)
+        if inputs and (interface.get("in_hdmi_count") or 0) < inputs:
+            return "insufficient HDMI inputs"
+        if outputs and (interface.get("out_hdmi_count") or 0) < outputs:
+            return "insufficient HDMI outputs"
 
     if "extender" in cats or product.get("category") == "extender":
         distance = requested_distance_m(text)
