@@ -80,6 +80,12 @@ class ChatContextTests(unittest.TestCase):
         self.assertEqual(result["chips"][:3], ["1080p", "4K", "8K"])
         self.assertIn("resolution", result["message"].lower())
         self.assertNotIn("Resolution?", result["_scenario_answers"])
+        correction = run_chat_turn([
+            {"role": "user", "content": opening},
+            {"role": "assistant", "content": result["message"]},
+        ], "HDMI", {})
+        self.assertIn("HDMI is the connection type", correction["message"])
+        self.assertEqual(correction["chips"][:3], ["1080p", "4K", "8K"])
         payload["ready_to_search"] = True
         payload["search_query"] = "4-port HDMI KVM 4K"
         mock_openai.return_value.chat.completions.create.return_value = SimpleNamespace(
@@ -88,7 +94,7 @@ class ChatContextTests(unittest.TestCase):
             {"role": "user", "content": opening},
             {"role": "assistant", "content": result["message"]},
             {"role": "user", "content": "HDMI"},
-            {"role": "assistant", "content": result["message"]},
+            {"role": "assistant", "content": correction["message"]},
         ], "4K", {})
         self.assertTrue(followup["ready_to_search"])
 

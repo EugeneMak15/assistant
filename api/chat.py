@@ -408,7 +408,10 @@ def run_chat_turn(
     ):
         intent.pop("resolution", None)
         ready = False
-        msg = "What video resolution do you need: 1080p, 4K, or 8K?"
+        if re.fullmatch(r"\s*HDMI(?:\s*2\.[01])?\s*", user_message, re.I):
+            msg = "HDMI is the connection type. Which video resolution do you need: 1080p, 4K, or 8K?"
+        else:
+            msg = "What video resolution do you need: 1080p, 4K, or 8K?"
         chips = ["1080p", "4K", "8K", "Not sure"]
 
     # ── Reliability guardrail (deterministic, overrides a stalling model) ──────
