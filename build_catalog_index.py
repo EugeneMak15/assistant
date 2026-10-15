@@ -135,6 +135,10 @@ def product_line(p: dict) -> str:
 
     if p.get("max_distance_m"):
         parts.append(f"{p['max_distance_m']}m")
+    if p.get("taa_compliant") == 1:
+        parts.append("[TAA verified]")
+    if p.get("stock_status") == "Pre-Order":
+        parts.append(f"[Pre-Order{', ' + p['shipping_estimate'] if p.get('shipping_estimate') else ''}]")
 
     desc = p.get("what_it_does") or ""
     if desc:
@@ -156,7 +160,9 @@ def build_index_text(db_path: str = DB_PATH) -> str:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     rows = conn.execute(
-        "SELECT * FROM products WHERE (site_category IS NULL OR site_category != 'Discontinued') ORDER BY category, id"
+        "SELECT * FROM products WHERE (site_category IS NULL OR site_category != 'Discontinued') "
+        "AND (stock_status IS NULL OR stock_status NOT IN ('Discontinued', 'Out of Stock', 'Not in Feed')) "
+        "ORDER BY category, id"
     ).fetchall()
     conn.close()
 

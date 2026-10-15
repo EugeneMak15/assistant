@@ -14,7 +14,7 @@ except ImportError:
     sys.modules["openai"] = types.SimpleNamespace(OpenAI=object)
 
 from api.scenario_planner import _find_matching_skus_for_flow_a
-from api.product_rules import camera_family_key, camera_family_variants, hard_mismatch, is_selected_source_distribution, requested_ports, requested_video
+from api.product_rules import camera_family_key, camera_family_variants, hard_mismatch, is_selected_source_distribution, requested_distance_m, requested_ports, requested_video
 from api import db
 
 
@@ -28,8 +28,9 @@ class AdvisorRulesTests(unittest.TestCase):
             ["switcher"], {},
             "I have four HDMI sources, two at 8K/4K120, and 1 TV. Need a switcher.",
         )
-        self.assertEqual(skus[:2], ["BG-8K-HS41A", "BG-8K-HS41AR"])
-        self.assertNotIn("BG-8K-HS41", skus)  # Absent from the authoritative feed.
+        self.assertIn("BG-8K-HS41A", skus)
+        self.assertIn("BG-8K-HS41AR", skus)
+        self.assertIn("BG-8K-HS41", skus)  # Now present in the full site feed.
         self.assertIn("BG-8K-42MA", skus)
         self.assertNotIn("BG-UHD-MVS42MA", skus)
         self.assertNotIn("BG-PSC7X2", skus)
@@ -125,7 +126,7 @@ class AdvisorRulesTests(unittest.TestCase):
             ["ptz camera"], {}, "Need a PTZ camera for a medical clinic."
         )
         self.assertNotIn("BG-NUTRIX", general)
-        self.assertNotIn("BG-NUTRIX", medical)  # Medical-only, but currently absent from the feed.
+        self.assertIn("BG-NUTRIX", medical)
         stocked = {"id": "BG-NUTRIX", "name": "medical PTZ camera", "category": "camera",
                    "stock_status": "In Stock"}
         self.assertEqual(hard_mismatch(stocked, {}, "conference room"),
@@ -253,6 +254,36 @@ class AdvisorRulesTests(unittest.TestCase):
         )
         self.assertIn("BG-AVTPG-MINI-G2", skus)
 
+    def test_round3_sdi_fiber_and_splitter_use_sdi_hardware(self):
+        fiber = _find_matching_skus_for_flow_a(["extender"], {}, "12G-SDI over fiber, about 3 miles")
+        self.assertEqual(fiber, ["BG-FES12G"])
+        splitter = _find_matching_skus_for_flow_a(["SDI distribution amplifier"], {},
+                                                   "Split one 12G-SDI feed to 4 monitors")
+        self.assertEqual(splitter[0], "BG-DA-12GS1X4")
+        self.assertNotIn("BG-3GS14", splitter)
+
+    def test_round3_dante_switch_and_usb_quad_view(self):
+        dante = _find_matching_skus_for_flow_a(["presentation switcher"], {},
+                                                "Dante presentation switcher with HDMI and USB-C, four sources, 4K")
+        self.assertEqual(dante, ["BG-PSC51-4K"])
+        quad = _find_matching_skus_for_flow_a(["quad-view processor"], {},
+                                               "Quad-view processor with USB capture")
+        self.assertIn("BG-UHD-QVP-4X2", quad)
+
+    def test_eight_screen_wall_does_not_use_four_screen_processor(self):
+        skus = _find_matching_skus_for_flow_a(["video wall processor"], {},
+                                               "Video wall, 2 rows of 4 TVs, two sources, 30 feet, 4K")
+        self.assertNotIn("BG-UHD-VW24", skus)
+        self.assertTrue(skus)
+
+    def test_taa_requirement_uses_officially_verified_list(self):
+        good = {"id": "BG-4K-44MA", "name": "4x4 matrix", "category": "switcher",
+                "stock_status": "In Stock", "taa_compliant": 1}
+        unknown = {**good, "id": "BG-4K-VP44PRO", "taa_compliant": 0}
+        self.assertIsNone(hard_mismatch(good, {}, "TAA 4x4 matrix"))
+        self.assertEqual(hard_mismatch(unknown, {}, "TAA 4x4 matrix"),
+                         "TAA compliance not verified on the official product list")
+
     def test_earc_receiver_does_not_select_soundbar_only_adapter(self):
         self.assertIsNotNone(hard_mismatch(
             {"id": "BG-8K-SA", "name": "eARC Audio to Soundbar Adapter", "category": "audio"},
@@ -272,6 +303,52 @@ class AdvisorRulesTests(unittest.TestCase):
             hard_mismatch(product, interface, "need 8K60 over 100 meters", ["extender"]),
             "insufficient extension distance",
         )
+
+    def test_round3_wall_plate_and_integrated_kvm_routes(self):
+        self.assertEqual(
+            _find_matching_skus_for_flow_a(["extender"], {}, "Wall plate KVM, HDMI and USB-C, 200 feet"),
+            ["BG-EXH-70UWP-W"],
+        )
+        self.assertEqual(
+            _find_matching_skus_for_flow_a(["extender"], {}, "Dual-host USB 3.2 wall plate that extends over HDBaseT"),
+            ["BG-USX-WP100BC"],
+        )
+        self.assertEqual(
+            _find_matching_skus_for_flow_a(["extender"], {}, "Two USB-C laptops, one shared camera and two 4K screens, extended 300 feet"),
+            ["BG-USX-B100CH"],
+        )
+
+    def test_round3_integrated_switcher_and_ptz_joystick(self):
+        skus = _find_matching_skus_for_flow_a(
+            ["controller"], {}, "One box that is both my video switcher and PTZ joystick, 4 cameras, VISCA over IP"
+        )
+        self.assertEqual(skus, ["BG-COMMANDER-ULTRAX", "BG-COMMANDER-ULTRA"])
+
+    def test_round3_home_theater_and_six_display_matrix(self):
+        home = _find_matching_skus_for_flow_a(
+            ["matrix switcher", "audio converter"], {},
+            "Home: 8K projector, 4K TV, bedroom TV, 4 sources, Control4, eARC, 80 feet",
+        )
+        self.assertEqual(home[0], "BG-8K-44MA")
+        self.assertIn("BG-8K-AE", home)
+        matrix = _find_matching_skus_for_flow_a(
+            ["matrix switcher"], {}, "6 TVs, 2 sources, 4K, farthest 200 feet, need IR, Control4"
+        )
+        self.assertEqual(matrix[0], "BG-4K-88MA")
+
+    def test_taa_room_dante_dsp_does_not_exclude_camera_and_matrix(self):
+        skus = _find_matching_skus_for_flow_a(
+            ["ptz cameras", "matrix switcher", "audio processor"], {},
+            "TAA training room: 2 PTZ cameras, 4x4 matrix, 4 displays at 200 feet, Dante DSP",
+        )
+        self.assertIn("BG-AVENTO-4K", skus)
+        self.assertIn("BG-4K-44MA", skus)
+        self.assertNotIn("BG-4K-VP44PRO", skus)
+
+    def test_spanish_hdmi_extender_keeps_distance(self):
+        question = "Necesito un extensor HDMI 4K para 80 metros."
+        self.assertEqual(requested_distance_m(question), 80)
+        self.assertIn("BG-EXH-100C6", _find_matching_skus_for_flow_a(["extensor HDMI"], {}, question))
 
 
 if __name__ == "__main__":

@@ -151,9 +151,8 @@ YOUR REASONING PROCESS (think step by step):
 
      Large scale (17–80 displays, any distance):
      TWO valid approaches — present BOTH with honest trade-offs:
-     • Option A — Enterprise modular matrix (BG-MC-SERIES): single managed device, HDBaseT/fiber cards up to 150m
-       Best for: structured enterprise installs, IT-free operation, single-vendor support
-       Note: MC-3636M = 36×36 ($9,449), MC-8080M = 80×80 ($19,999) — pick the smallest that covers the need
+     • Option A — Enterprise modular matrix only if the exact SKU is purchasable in the current catalog.
+       Never name a historical BG-MC-SERIES unit that is marked Not in Feed.
      • Option B — AV-over-IP (BG-IPGEAR-XTREME / ULTRA): distributed system, unlimited distance, scalable
        Best for: venues needing future flexibility, IP infrastructure already in place
        Total cost = (N sources × encoder price) + (M displays × decoder price) + managed switch — calculate this explicitly
@@ -316,17 +315,17 @@ RULES:
 - Only recommend SKUs that exist in the catalog above
 - Never invent specs — use only what's in the catalog
 - Never recommend specific external brands — describe device type only
-- Always include PTZ controller when cameras are recommended
+- Include a PTZ joystick only when manual PTZ control is required; do not call it required for auto-tracking/Zoom rooms.
 - Always include network switch for NDI/IP systems
 - Flag SDI→HDMI conversion only when genuinely needed
-- Always show BOTH Option A and Option B — even if one is clearly better — UNLESS scale >= 20 outputs or distance > 70m (AV-over-IP only in that case)
+- Show a second option only when it offers a useful, materially different trade-off.
 - NEVER recommend accessories (SKUs with "-ACC-" in them) as main products — they are mounting hardware only
 
 RULES:
 - Only recommend SKUs that exist in the catalog above
 - Never invent specs — use only what's in the catalog
 - Never recommend specific external brands — describe device type only
-- Always include PTZ controller when cameras are recommended
+- Include a PTZ joystick only when manual PTZ control is required; do not call it required for auto-tracking/Zoom rooms.
 - Always include network switch for NDI/IP systems
 - Flag SDI→HDMI conversion only when genuinely needed (check all device outputs first)
 - NEVER recommend accessories (SKUs with "-ACC-" in them) as main products"""
@@ -421,14 +420,16 @@ Your task: given a customer scenario, identify which BZB Gear SKUs are needed.
 Return ONLY a JSON object: {{"skus": ["SKU1", "SKU2", ...]}}
 Include every SKU that will appear in the final recommendation — cameras, controllers, switchers, encoders, network gear.
 Note: some products have a "BZ-" prefix (not "BG-") — include them too.
-If the scenario is product_selection (customer asked about a specific category), include ALL products in that category that match the specs.
+If the scenario is product_selection, select at most three distinct best-fit products per requested category; group cosmetic variants into one series.
 Do not explain. Only JSON.
 
 CRITICAL RULES — ALWAYS FOLLOW:
 
-RULE A — NO ACCESSORIES: Never include accessories. Remove any SKU that contains "-ACC-" in its name
+RULE A — ACCESSORIES: Include a mount or rack kit only when the customer explicitly asks for that accessory. Otherwise remove any SKU that contains "-ACC-" in its name
 (e.g. BG-IPGEAR-PRO-ACC-RM10, BG-VOP-ACC-RM10, BG-IPGEAR-ULTRA-ACC-RM, BG-VPTZ-CM, BG-VPTZ-WM, BG-VPTZ-TPM).
-Accessories are mounting brackets, rack kits, and cable management — not products to recommend.
+Accessories are mounting brackets, rack kits, and cable management — suggest them only for an explicit accessory request.
+
+RULE A2 — TAA: If the customer requires TAA, only SKUs marked [TAA verified] in the catalog qualify. Never infer compliance from similar products.
 
 RULE B — LARGE SCALE AV-OVER-IP: If the scenario requires 20 or more display outputs, OR cable distances over 70m:
   - DO NOT include any matrix switchers or HDBaseT kits — they cannot scale to this requirement.
@@ -525,6 +526,8 @@ def _build_product_context(products: list[dict]) -> str:
             if availability == "Pre-Order" and p.get("shipping_estimate"):
                 availability += f" ({p['shipping_estimate']}, per product page)"
             lines.append(f"Availability: {availability}")
+        if p.get("taa_compliant") == 1:
+            lines.append("TAA: verified on BZBGEAR's TAA product list")
 
         # ── Use structured interface data if available ─────────────────────
         iface = get_interface(sku)
@@ -804,7 +807,17 @@ def _sanity_filter_candidates(
 
     if not products:
         return [], []
-    candidate_skus = [sku for sku, _ in sorted(eligible, key=lambda item: item[1])]
+    ranked_skus = [sku for sku, _ in sorted(eligible, key=lambda item: item[1])]
+    if category_groups:
+        selected = set()
+        for category in requested_categories:
+            selected.update([sku for sku in ranked_skus if sku in category_groups[category]][:4])
+        candidate_skus = [sku for sku in ranked_skus if sku in selected][:16]
+        category_groups = {category: members & set(candidate_skus)
+                           for category, members in category_groups.items()}
+    else:
+        candidate_skus = ranked_skus[:8]
+    products = [p for p in products if p["id"] in set(candidate_skus)]
     if len(candidate_skus) == 1:
         return candidate_skus, []
 
@@ -878,7 +891,7 @@ def _sanity_filter_candidates(
 
         # ── Python-level hard rules (override LLM classification) ──────────
         perfect, partial = _apply_hard_feature_rules(
-            perfect, partial, answers, plan, conn_ref=None
+            perfect, partial, answers, plan, conn_ref=None, requirement=requirement
         )
 
         # The optional LLM classifier can omit a whole requested device type.
@@ -903,6 +916,7 @@ def _apply_hard_feature_rules(
     answers: dict,
     plan: dict,
     conn_ref=None,
+    requirement: str = "",
 ) -> tuple[list[str], list[str]]:
     """
     Python-level post-processing after LLM filter.
@@ -927,16 +941,23 @@ def _apply_hard_feature_rules(
     if "ndi" in req_text and "no" not in req_text[:req_text.find("ndi")+5]:
         feature_checks.append(("ndi", ["ndi", "network device interface"]))
 
-    if not feature_checks:
+    zoom_match = re.search(r"\b(\d{1,2})\s*x\s*(?:zoom)?\b", requirement, re.I)
+    if not feature_checks and not zoom_match:
         return perfect, partial
 
     conn = get_conn()
     demoted = []
     for sku in list(perfect):
-        row = conn.execute("""SELECT p.name, p.what_it_does, pi.out_ndi
+        row = conn.execute("""SELECT p.name, p.what_it_does, pi.out_ndi, p.category, pi.zoom_optical
                               FROM products p LEFT JOIN product_interfaces pi ON pi.sku=p.id
                               WHERE p.id=?""", (sku,)).fetchone()
         if not row:
+            continue
+        if zoom_match and row[3] == "camera" and row[4] != int(zoom_match.group(1)):
+            perfect.remove(sku)
+            if sku not in partial:
+                partial.append(sku)
+            demoted.append((sku, "optical zoom"))
             continue
         product_text = ((row[0] or "") + " " + (row[1] or "")).lower()
         for feature_name, keywords in feature_checks:
@@ -1324,6 +1345,14 @@ def get_universal_recommendation(
     from api.product_rules import MEDICAL_TERMS
     medical_context = bool(MEDICAL_TERMS.search(question))
     pass1_skus = _pass1_select_skus(question, session_info)
+    from api.product_rules import mentioned_catalog_skus
+    from api.db import get_conn
+    conn = get_conn()
+    try:
+        named_skus = mentioned_catalog_skus(conn, question)
+    finally:
+        conn.close()
+    pass1_skus = list(dict.fromkeys(named_skus[:8] + pass1_skus))
     if not medical_context:
         pass1_skus = [s for s in pass1_skus if s != "BG-NUTRIX"]
         candidate_skus = [s for s in (candidate_skus or []) if s != "BG-NUTRIX"]
@@ -1369,6 +1398,21 @@ Verify signal compatibility at every link and show the complete chain.
         # Fail closed if the model ignores the medical-only restriction.
         answer = "\n".join(line for line in answer.splitlines() if "BG-NUTRIX" not in line.upper()).strip()
     found_skus = sorted(set(_SKU_RE.findall(answer.upper())))
+    if found_skus:
+        from api.db import get_conn
+        conn = get_conn()
+        try:
+            shipping = conn.execute(
+                f"SELECT id, shipping_estimate FROM products WHERE id IN ({','.join('?' * len(found_skus))}) "
+                "AND stock_status='Pre-Order' AND shipping_estimate IS NOT NULL",
+                found_skus,
+            ).fetchall()
+        finally:
+            conn.close()
+        notes = [f"{row['id']}: {row['shipping_estimate']}"
+                 for row in shipping if row['shipping_estimate'].lower() not in answer.lower()]
+        if notes:
+            answer += "\n\nAvailability: " + "; ".join(notes[:3]) + "."
 
     return {
         "answer":        answer,

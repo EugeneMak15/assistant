@@ -8,48 +8,43 @@ Dry-run by default; --apply backs up SQLite before changing any rows.
 import argparse
 from datetime import datetime, timezone
 import json
+import logging
 from pathlib import Path
 import re
 import sqlite3
+import urllib.request
+from lxml import html
 
-from sync_catalog_feed import FEED_URL, G, _camera_alias, _feed_items, _feed_price
-from site_feed_products import fetch_site_products
+from sync_catalog_feed import _camera_alias
+from site_feed_products import SITE_FEED_URL, parse_site_availability, parse_shipping_estimate
 
-
-def fetch_feed_products(feed_url: str = FEED_URL) -> dict[str, dict]:
-    items = _feed_items(feed_url)
-    if len(items) < 200:
-        raise ValueError(f"Shopping feed unexpectedly small: {len(items)} SKUs")
-    products = {}
-    for sku, item in items.items():
-        raw_status = (item.findtext(G + "availability") or "").strip().lower()
-        if raw_status not in {"in_stock", "in stock", "out_of_stock", "out of stock", "preorder"}:
-            raise ValueError(f"Unknown feed availability for {sku}: {raw_status!r}")
-        products[sku] = {
-            "availability": raw_status,
-            "price": _feed_price(item),
-            "product_type": (item.findtext(G + "product_type") or "").strip(),
-            "description": (item.findtext(G + "description") or ""),
-        }
-    # These reviewed live-site products are absent from Google Shopping XML.
-    # Keep their availability tied to the complete site product feed.
-    for sku, site in fetch_site_products().items():
-        status = site["status"]
-        category = next((path for path in site["categories"] if path.startswith("Video Switchers >")),
-                        site["categories"][0])
-        products[sku] = {
-            "availability": {"Available": "in_stock", "Pre-Order": "preorder",
-                             "Out of Stock": "out_of_stock", "Discontinued": "discontinued"}[status],
-            "price": site["price"],
-            "product_type": category,
-            "description": "",
-        }
-    return products
+TAA_URL = "https://bzbgear.com/taa-compliant/"
 
 
-def plan_updates(conn: sqlite3.Connection, feed: dict[str, dict]) -> dict:
+def fetch_feed_products(feed_url: str = SITE_FEED_URL) -> dict[str, dict]:
+    request = urllib.request.Request(feed_url, headers={"User-Agent": "BZBAdvisor/1.0"})
+    with urllib.request.urlopen(request, timeout=45) as response:
+        return parse_site_availability(response.read())
+
+
+def fetch_taa_skus(url: str = TAA_URL) -> set[str]:
+    """Only the site's explicit TAA product list can confirm compliance."""
+    request = urllib.request.Request(url, headers={"User-Agent": "BZBAdvisor/1.0"})
+    with urllib.request.urlopen(request, timeout=30) as response:
+        page = html.fromstring(response.read())
+    skus = {" ".join(node.text_content().split()).upper() for node in page.xpath(
+        "//div[contains(concat(' ', normalize-space(@class), ' '), ' product_card2_title ')]"
+    )}
+    if len(skus) < 20 or "BG-4K-44MA" not in skus:
+        raise ValueError("TAA product list unexpectedly incomplete")
+    return skus
+
+
+def plan_updates(conn: sqlite3.Connection, feed: dict[str, dict], taa_skus: set[str] | None = None) -> dict:
+    has_taa = "taa_compliant" in {row[1] for row in conn.execute("PRAGMA table_info(products)")}
     rows = {row["id"].upper(): row for row in conn.execute(
-        "SELECT id, category, stock_status, site_category, price_usd, inputs, outputs, max_distance_m, what_it_does FROM products"
+        "SELECT id, category, stock_status, site_category, price_usd, inputs, outputs, max_distance_m, what_it_does"
+        + (", taa_compliant" if has_taa else "") + " FROM products"
     )}
     # Some feed camera variants append -31 to an otherwise identical legacy SKU.
     # Reconcile that alias to the existing row; do not hide a still-stocked camera.
@@ -63,6 +58,7 @@ def plan_updates(conn: sqlite3.Connection, feed: dict[str, dict]) -> dict:
     updates = []
     spec_updates = []
     category_updates = []
+    taa_updates = []
     for sku, row in rows.items():
         product = normalized_feed.get(sku)
         if product is None:
@@ -94,6 +90,21 @@ def plan_updates(conn: sqlite3.Connection, feed: dict[str, dict]) -> dict:
         if product and sku == "BG-4K-VP1616" and re.search(r"16\s*x\s*16", product["description"], re.I):
             if row["inputs"] != 16 or row["outputs"] != 16:
                 spec_updates.append((16, 16, row["max_distance_m"], row["what_it_does"], row["id"]))
+        # Reviewed distance limits from the product specifications. Do not
+        # treat a missing numeric distance as zero and suppress these extenders.
+        reviewed_distances = {
+            "BG-EXT-H70P": (40, "4K30 HDMI over CAT, up to 131 ft / 40 m, with HDMI loop-out."),
+            "BG-EXUF": (100, "USB 3.1 over fiber, four device ports; real-time USB 3.x up to 100 m (longer non-real-time modes vary)."),
+            "BG-FES12G": (10000, "12G-SDI over fiber up to 10 km with a suitable single-mode SFP module."),
+        }
+        if product and sku in reviewed_distances:
+            distance, description = reviewed_distances[sku]
+            if row["max_distance_m"] != distance or row["what_it_does"] != description:
+                spec_updates.append((row["inputs"], row["outputs"], distance, description, row["id"]))
+        if taa_skus is not None:
+            confirmed = int(sku in taa_skus)
+            if not has_taa or row["taa_compliant"] != confirmed:
+                taa_updates.append((confirmed, row["id"]))
     return {
         "feed_skus": len(feed),
         "matched_skus": len(rows.keys() & normalized_feed.keys()),
@@ -106,16 +117,29 @@ def plan_updates(conn: sqlite3.Connection, feed: dict[str, dict]) -> dict:
         "updates": updates,
         "spec_updates": spec_updates,
         "category_updates": category_updates,
+        "taa_updates": taa_updates,
     }
 
 
 def refresh(db_path: str, apply: bool = False, backup_dir: str | None = None) -> dict:
     feed = fetch_feed_products()
+    taa_skus = fetch_taa_skus()
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
-        result = plan_updates(conn, feed)
-        if apply and (result["updates"] or result["spec_updates"] or result["category_updates"]):
+        result = plan_updates(conn, feed, taa_skus)
+        shipping_updates = []
+        nutrix = feed.get("BG-NUTRIX")
+        if nutrix and nutrix["availability"] == "preorder" and nutrix.get("link", "").startswith("https://bzbgear.com/product/"):
+            try:
+                request = urllib.request.Request(nutrix["link"], headers={"User-Agent": "BZBAdvisor/1.0"})
+                with urllib.request.urlopen(request, timeout=15) as response:
+                    estimate = parse_shipping_estimate(response.read())
+                if estimate:
+                    shipping_updates.append((estimate, "BG-NUTRIX"))
+            except Exception as exc:
+                logging.getLogger(__name__).warning("Could not verify BG-NUTRIX shipping badge: %s", exc)
+        if apply and (result["updates"] or result["spec_updates"] or result["category_updates"] or result["taa_updates"] or shipping_updates):
             if not backup_dir:
                 raise ValueError("--backup-dir is required with --apply")
             target = Path(backup_dir)
@@ -124,6 +148,10 @@ def refresh(db_path: str, apply: bool = False, backup_dir: str | None = None) ->
             backup_path = target / f"catalog-availability-{stamp}.db"
             with sqlite3.connect(backup_path) as backup:
                 conn.backup(backup)
+            if "taa_compliant" not in {row[1] for row in conn.execute("PRAGMA table_info(products)")}:
+                conn.execute("ALTER TABLE products ADD COLUMN taa_compliant INTEGER")
+            if "shipping_estimate" not in {row[1] for row in conn.execute("PRAGMA table_info(products)")}:
+                conn.execute("ALTER TABLE products ADD COLUMN shipping_estimate TEXT")
             conn.executemany(
                 "UPDATE products SET stock_status=?, site_category=?, price_usd=? WHERE id=?",
                 result["updates"],
@@ -133,11 +161,15 @@ def refresh(db_path: str, apply: bool = False, backup_dir: str | None = None) ->
                 result["spec_updates"],
             )
             conn.executemany("UPDATE products SET category=? WHERE id=?", result["category_updates"])
+            conn.executemany("UPDATE products SET taa_compliant=? WHERE id=?", result["taa_updates"])
+            conn.executemany("UPDATE products SET shipping_estimate=? WHERE id=?", shipping_updates)
             conn.commit()
             result["backup_path"] = str(backup_path)
         result.pop("updates")
         result.pop("spec_updates")
         result.pop("category_updates")
+        result.pop("taa_updates")
+        result["shipping_estimates"] = [sku for _, sku in shipping_updates]
         return result
     finally:
         conn.close()

@@ -5,8 +5,8 @@ import tempfile
 from pathlib import Path
 import unittest
 
-from site_feed_products import parse_shipping_estimate, parse_site_feed
-from sync_site_products import sync
+from site_feed_products import parse_shipping_estimate, parse_site_feed, parse_site_availability
+from sync_site_products import PRODUCT_PROFILES, sync
 from api.product_rules import hard_mismatch
 
 
@@ -30,10 +30,23 @@ class SiteFeedProductTests(unittest.TestCase):
             for sku, status in (("BG-8K-KVM21A", "Available"),
                                 ("BG-USM-44", "Pre-Order"), ("BG-8K-28A", "Pre-Order"))
         )
-        products = parse_site_feed(("<rss><channel>" + filler + reviewed + "</channel></rss><script/>").encode())
+        products = parse_site_feed(("<rss><channel>" + filler + reviewed + "</channel></rss><script/>").encode(),
+                                   {"BG-8K-KVM21A", "BG-USM-44", "BG-8K-28A"})
         self.assertEqual(set(products), {"BG-8K-KVM21A", "BG-USM-44", "BG-8K-28A"})
         self.assertEqual(products["BG-USM-44"]["status"], "Pre-Order")
         self.assertEqual(len(products["BG-8K-28A"]["specs"]), 5)
+
+    def test_complete_feed_recognizes_mixed_case_sku_and_current_sale_price(self):
+        filler = "<item><id>OTHER-{}</id><status>In Stock</status></item>"
+        data = ("<rss><channel>" + "".join(filler.format(n) for n in range(200)) +
+                "<item><id>BG-Commander-UltraX</id><status>Pre-Order</status>"
+                "<price>$999.00 Original price.$799.00 Current price.</price>"
+                "<categories><category>New Arrivals</category><category>Joystick Controllers</category></categories>"
+                "</item></channel></rss><script/>").encode()
+        products = parse_site_availability(data)
+        self.assertEqual(products["BG-COMMANDER-ULTRAX"]["availability"], "preorder")
+        self.assertEqual(products["BG-COMMANDER-ULTRAX"]["price"], 799.0)
+        self.assertEqual(products["BG-COMMANDER-ULTRAX"]["product_type"], "Joystick Controllers")
 
     def test_sync_inserts_two_and_repairs_existing_kvm(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -60,12 +73,15 @@ class SiteFeedProductTests(unittest.TestCase):
                                  "features": ["Reviewed"], "specs": {"Bandwidth": "48Gbps"},
                                  "image_url": None, "additional_images": [], "manual_url": None,
                                  "brochure_url": None}
+            for sku in set(PRODUCT_PROFILES) - set(products):
+                products[sku] = {**products["BG-8K-28A"], "title": sku,
+                                 "link": f"https://bzbgear.com/product/{sku.lower()}/"}
             result = sync(db_path, apply=True, backup_dir=directory, site_products=products)
-            self.assertEqual(result["insert"], ["BG-8K-28A", "BG-USM-44"])
+            self.assertEqual(result["insert"], sorted(set(PRODUCT_PROFILES) - {"BG-8K-KVM21A"}))
             self.assertTrue(Path(result["backup"]).exists())
             conn = sqlite3.connect(db_path)
             try:
-                self.assertEqual(conn.execute("SELECT count(*) FROM products").fetchone()[0], 3)
+                self.assertEqual(conn.execute("SELECT count(*) FROM products").fetchone()[0], len(PRODUCT_PROFILES))
                 self.assertEqual(conn.execute("SELECT stock_status FROM products WHERE id='BG-USM-44'").fetchone()[0], "Pre-Order")
                 self.assertEqual(conn.execute("SELECT shipping_estimate FROM products WHERE id='BG-8K-28A'").fetchone()[0], "Shipping Q4 2026")
                 self.assertEqual(conn.execute("SELECT max_res,primary_fn,ctrl_ip FROM product_interfaces WHERE sku='BG-8K-KVM21A'").fetchone(), ("8K60", "kvm-switcher", 0))

@@ -283,15 +283,22 @@ def _run_usb_matrix_turn(history: list[dict], user_message: str) -> dict:
     if match and not devices:
         value = match.group(1)
         devices = int(value) if value.isdigit() else count_words[value]
+    if not devices:
+        devices = sum(bool(re.search(rf"\b{item}\b", user_text)) for item in ("webcam", "keyboard", "mouse")) or None
     if not devices and history and re.search(r"\b(?:devices?|peripherals?)\b", history[-1].get("content", ""), re.I):
         devices = _parse_capacity(user_message)
     if not hosts and history and re.search(r"\b(?:computers?|hosts?)\b", history[-1].get("content", ""), re.I):
         hosts = _parse_capacity(user_message)
 
     ready = bool(hosts and devices)
-    query = f"{hosts}x{devices} USB matrix switcher for {hosts} computers and {devices} USB devices" if ready else ""
+    explicit_matrix = bool(re.search(
+        r"\busb\b.{0,20}\bmatrix\b|\bmatrix\b.{0,20}\busb\b|"
+        r"\bwhich computer gets which device\b|\bindependent\s+(?:usb\s+)?routing\b", user_text
+    ))
+    device_type = "USB matrix switcher" if explicit_matrix else "USB peripheral switch"
+    query = f"{hosts}x{devices} {device_type} for {hosts} computers and {devices} USB devices" if ready else ""
     if ready:
-        message = f"Got it — {hosts} computers sharing {devices} USB devices. Let me find the right USB matrix..."
+        message = f"Got it — {hosts} computers sharing {devices} USB devices. Let me find the right switch..."
         chips = []
     elif not hosts:
         message = "How many computers will share the USB devices?"
@@ -310,7 +317,7 @@ def _run_usb_matrix_turn(history: list[dict], user_message: str) -> dict:
             **({"num_outputs": devices} if devices else {}),
         },
         "ready_to_search": ready, "search_query": query,
-        "_scenario_plan": {"flow": "product_selection", "requested_categories": ["usb matrix switcher"],
+        "_scenario_plan": {"flow": "product_selection", "requested_categories": [device_type.lower()],
                            "scenario_type": "other", "scenario_summary": query or "USB peripheral sharing",
                            "clarifying_questions": []},
         "_scenario_answers": answers, "_clarification_round": 0,
@@ -331,6 +338,33 @@ def run_chat_turn(
     user_text = " ".join(h.get("content", "") for h in history if h.get("role") == "user") + " " + user_message
     if is_usb_matrix_request(user_text):
         return _run_usb_matrix_turn(history, user_message)
+
+    # A direct question about a named model/series needs a catalog lookup,
+    # not another round of room-design questions.
+    if re.search(r"^\s*(?:is|are|does|do|compare|what(?:'s| is) the difference)\b", user_message, re.I):
+        from .product_rules import mentioned_catalog_skus
+        from .db import get_conn
+        conn = get_conn()
+        try:
+            mentioned = mentioned_catalog_skus(conn, user_message)
+            categories = [row[0] for row in conn.execute(
+                f"SELECT DISTINCT category FROM products WHERE id IN ({','.join('?' * len(mentioned))})",
+                mentioned,
+            )] if mentioned else []
+        finally:
+            conn.close()
+        if mentioned and categories:
+            aliases = {"camera": "ptz camera", "av_over_ip": "av over ip",
+                       "controller": "ptz controller", "audio": "audio converter"}
+            requested = list(dict.fromkeys(aliases.get(category, category) for category in categories))
+            return {
+                "message": "I’ll check those models against the catalog.", "chips": [],
+                "state_update": {}, "ready_to_search": True, "search_query": user_message,
+                "_scenario_plan": {"flow": "product_selection", "requested_categories": requested,
+                                   "scenario_type": "other", "scenario_summary": user_message,
+                                   "clarifying_questions": []},
+                "_scenario_answers": {}, "_clarification_round": 0,
+            }
 
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
@@ -399,6 +433,29 @@ def run_chat_turn(
     ready    = bool(data.get("ready_to_search"))
     msg      = data.get("message", "")
     sq       = data.get("search_query", "")
+
+    from .product_rules import requested_distance_m, requested_ports
+    user_requests = " ".join(h.get("content", "") for h in history if h.get("role") == "user")
+    user_requests = (user_requests + " " + user_message).strip()
+    known_distance = requested_distance_m(user_requests)
+    known_inputs, known_outputs = requested_ports(user_requests)
+    known_resolution = bool(re.search(r"\b(?:1080\s*p?|4\s*k|8\s*k)(?:\b|(?=\d))", user_requests, re.I))
+    asked_again = (
+        (known_distance is not None and re.search(r"\b(?:how far|distance|cable run|longest|feet|meters?)\b", msg, re.I))
+        or (known_resolution and re.search(r"\b(?:what|which)\b.{0,25}\bresolution\b|\b1080p or 4K\b", msg, re.I))
+        or (known_inputs is not None and re.search(r"\bhow many\b.{0,30}\b(?:sources?|inputs?)\b", msg, re.I))
+        or (known_outputs is not None and re.search(r"\bhow many\b.{0,30}\b(?:tvs?|screens?|displays?|outputs?)\b", msg, re.I))
+    )
+    questions_so_far = sum(h.get("role") == "assistant" and "?" in h.get("content", "") for h in history)
+    if not ready and (asked_again or questions_so_far >= 5):
+        if asked_again and questions_so_far < 5 and not known_resolution and re.search(r"\b(?:hdmi|video|display|tv|screen|wall plate)\b", user_requests, re.I):
+            msg = "What resolution do you need: 1080p or 4K?"
+            chips = ["1080p", "4K", "Not sure"]
+        else:
+            ready = True
+            msg = "Got it — let me find the best-fit options."
+            chips = []
+            sq = user_requests
 
     # A connector name ("HDMI") is not an answer to a resolution question.
     # Make the missing choice explicit and clickable for HDMI KVM shoppers.

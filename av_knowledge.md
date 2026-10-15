@@ -182,7 +182,7 @@ Dante    → analog audio:   REQUIRES DANTE CONTROLLER + audio interface
 - Tally light pass-through: BG-ADAMO cameras have tally — verify splitter passes tally
 
 ### PTZ Controllers — BG-COMMANDER Series
-**RULE: Every PTZ camera deployment needs a controller. Do not omit.**
+**RULE: Include a joystick when the customer needs manual PTZ operation. Software-controlled NDI workflows and automatic tracking conference rooms do not require a separate joystick.**
 
 | SKU | Protocol | Cameras | Preview | Best for |
 |-----|----------|---------|---------|----------|
@@ -488,6 +488,10 @@ Rules:
 
 ⚠️ CHECK THIS TABLE FIRST before selecting individual products for each role.
 One multi-function product = fewer devices, simpler setup, lower cost.
+
+Availability overrides examples in this document: only recommend products currently present and purchasable in the live catalog. A missing product page or `Not in Feed` SKU is not a valid option.
+
+For one source mirrored to several nearby TVs, choose the smallest in-stock splitter with enough outputs. Extend only the cable runs that need it; do not add one extender per TV or an 8K Pre-Order splitter for a 4K installation without a stated need. For independent sources on different TVs, use a matrix with enough inputs and outputs and name that matrix in the answer.
 
 ### Live Production / Streaming
 

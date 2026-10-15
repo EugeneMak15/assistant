@@ -75,6 +75,14 @@ class CatalogAvailabilityTests(unittest.TestCase):
         }}
         self.assertEqual(plan_updates(self.conn, feed)["category_updates"], [("audio", "BG-8K-AE")])
 
+    def test_taa_list_is_explicit_not_inferred_from_product_type(self):
+        feed = {"BG-COMMANDER": {
+            "availability": "in_stock", "product_type": "Joystick Controllers", "price": 599.0,
+        }}
+        result = plan_updates(self.conn, feed, {"BG-COMMANDER"})
+        self.assertIn((1, "BG-COMMANDER"), result["taa_updates"])
+        self.assertIn((0, "BG-DA-14"), result["taa_updates"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -54,6 +54,28 @@ class ChatContextTests(unittest.TestCase):
         self.assertEqual(result["chips"], [])
         mock_openai.assert_not_called()
 
+    @patch("api.chat.OpenAI")
+    def test_two_usb_c_laptops_use_small_peripheral_switch(self, mock_openai):
+        from api.scenario_planner import _find_matching_skus_for_flow_a
+        result = run_chat_turn([], "Share a webcam and keyboard between two USB-C laptops.", {})
+        self.assertTrue(result["ready_to_search"])
+        self.assertEqual(result["_scenario_plan"]["requested_categories"], ["usb peripheral switch"])
+        skus = _find_matching_skus_for_flow_a(result["_scenario_plan"]["requested_categories"],
+                                                result["_scenario_answers"], result["search_query"])
+        self.assertEqual(skus[0], "BG-USW-24")
+        mock_openai.assert_not_called()
+
+    @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
+    @patch("api.chat.OpenAI")
+    def test_already_stated_distance_is_not_asked_again(self, mock_openai):
+        payload = {"message": "How far is the cable run?", "chips": [], "ready_to_search": False,
+                   "intent": {"flow": "product_selection", "requested_categories": ["wall plate extender"]}}
+        mock_openai.return_value.chat.completions.create.return_value = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(payload)))])
+        result = run_chat_turn([], "HDMI and mini DisplayPort wall plate, 4K, 150 feet to the rack", {})
+        self.assertTrue(result["ready_to_search"])
+        self.assertIn("150 feet", result["search_query"])
+
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     @patch("api.chat.OpenAI")
     def test_hdmi_kvm_category_is_normalized(self, mock_openai):

@@ -516,6 +516,7 @@ def _find_matching_skus_via_interfaces(
     is_camera: bool,
     needs_ndi: bool = False,
     needs_dante: bool = False,
+    requirement: str = "",
 ) -> list[str]:
     """
     Structured query using product_interfaces JOIN products.
@@ -560,6 +561,7 @@ def _find_matching_skus_via_interfaces(
         "test pattern generator": ["integration"],
         "signal generator": ["integration"],
         "signal tester": ["integration"],
+        "tester": ["integration"],
         "audio extractor": ["audio"],
         "audio converter": ["audio"],
         "earc adapter": ["audio"],
@@ -587,6 +589,12 @@ def _find_matching_skus_via_interfaces(
         "multiviewer":     ["multiviewer"],
         "multi viewer":    ["multiviewer"],
         "quad viewer":     ["multiviewer"],
+        "distribution amplifier": ["distribution_amp"],
+        "quad-view processor": ["switcher", "multiviewer"],
+        "video processor": ["switcher", "multiviewer"],
+        "mount": ["accessory"],
+        "ceiling mount": ["accessory"],
+        "rack mount kit": ["accessory"],
     }
 
 
@@ -598,9 +606,15 @@ def _find_matching_skus_via_interfaces(
     )
     for cat in requested_categories:
         cat_low = cat.lower()
-        # Check direct category map first (exact match)
-        if cat_low in CATEGORY_DIRECT_MAP:
-            direct_cats.update(CATEGORY_DIRECT_MAP[cat_low])
+        if "extender" in cat_low or "hdbaset" in cat_low:
+            # Some wall-plate extender kits were indexed by their switching
+            # function, so include their product category as well.
+            direct_cats.add("extender")
+        # Specific direct categories may be embedded in a longer LLM label.
+        direct_match = next((key for key in sorted(CATEGORY_DIRECT_MAP, key=len, reverse=True)
+                             if key in cat_low), None)
+        if direct_match:
+            direct_cats.update(CATEGORY_DIRECT_MAP[direct_match])
             continue
         cat_words = set(cat_low.split())
         # Sort by specificity (more words = more specific) and take first match only
@@ -609,6 +623,11 @@ def _find_matching_skus_via_interfaces(
             if key_words <= cat_words:  # all key words must appear in category
                 fn_values.update(fns)
                 break  # take most specific match only
+
+    if any("controller" in cat.lower() or "joystick" in cat.lower() for cat in requested_categories) and re.search(
+        r"\b(?:one box|all[ -]?in[ -]?one)\b", requirement, re.I
+    ):
+        fn_values.add("production-switcher")
 
     if not fn_values and not direct_cats:
         return []
@@ -624,7 +643,7 @@ def _find_matching_skus_via_interfaces(
             f"WHERE p.category IN ({dph}) "
             "AND (p.stock_status IS NULL OR p.stock_status NOT IN ('Discontinued', 'Out of Stock', 'Not in Feed')) "
             "AND (p.site_category IS NULL OR p.site_category != 'Discontinued') "
-            "AND p.category != 'accessory'"
+            + ("" if "accessory" in direct_cats else "AND p.category != 'accessory'")
         )
         if any(term in c.lower() for c in requested_categories
                for term in ("test pattern", "signal generator", "signal tester")):
@@ -714,13 +733,12 @@ def _find_matching_skus_via_interfaces(
         if needs_ndi:
             sql += " AND pi.out_ndi = 1"
         elif is_camera and not needs_ndi and not needs_dante:
-            # Customer didn't ask for NDI — exclude NDI-only/Dante-only camera variants
-            # Keep cameras where NDI/Dante is not the defining feature
-            sql += " AND pi.out_ndi = 0"
+            # A camera with NDI plus HDMI/USB still serves an ordinary room.
+            sql += " AND (pi.out_ndi = 0 OR pi.out_hdmi = 1 OR pi.out_sdi = 1 OR pi.out_usb_video = 1)"
         if needs_dante:
             sql += " AND pi.out_dante = 1"
         elif is_camera and not needs_dante and not needs_ndi:
-            sql += " AND pi.out_dante = 0"
+            sql += " AND (pi.out_dante = 0 OR pi.out_hdmi = 1 OR pi.out_sdi = 1 OR pi.out_usb_video = 1)"
 
     rows = conn.execute(sql, params).fetchall()
     iface_skus = {row[0] for row in rows}
@@ -808,11 +826,12 @@ def _find_matching_skus_via_interfaces(
                 " AND NOT (p.category = 'av_over_ip' AND "
                 "(p.title LIKE '%Controller%' OR p.title LIKE '%Smart Controller%'))"
             )
+        accessory_filter = "" if "accessory" in direct_cats else "AND p.category != 'accessory'"
         direct_rows = conn.execute(
             f"SELECT p.id FROM products p WHERE p.category IN ({dph}) "
             "AND (p.stock_status IS NULL OR p.stock_status NOT IN ('Discontinued', 'Out of Stock', 'Not in Feed')) "
             "AND (p.site_category IS NULL OR p.site_category != 'Discontinued') "
-            f"AND p.category != 'accessory'{direct_sql_extra}",
+            f"{accessory_filter}{direct_sql_extra}",
             list(direct_cats) + direct_extra_params
         ).fetchall()
         iface_skus.update(r[0] for r in direct_rows)
@@ -836,7 +855,8 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
     # would reject them and return unrelated HDMI hardware instead.
     if len(requested_categories) <= 1 and (
         is_usb_matrix_request(question)
-        or any("usb matrix" in category.lower() for category in requested_categories)
+        or any("usb matrix" in category.lower() or "usb peripheral switch" in category.lower()
+               for category in requested_categories)
     ):
         text = " ".join([question, *(str(x) for x in answers.values())]).lower()
         matrix = re.search(r"\b(\d{1,2})\s*[x×]\s*(\d{1,2})\b", text)
@@ -848,21 +868,26 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
             devices = int(value) if value.isdigit() else {"one": 1, "two": 2, "three": 3,
                 "four": 4, "five": 5, "six": 6, "eight": 8}[value]
         from api.db import get_conn
+        explicit_matrix = "usb matrix" in text
+        functions = ("usb-matrix-switcher",) if explicit_matrix else ("usb-switcher", "usb-matrix-switcher")
         conn = get_conn()
         try:
             rows = conn.execute(
                 "SELECT p.id FROM products p JOIN product_interfaces pi ON pi.sku=p.id "
-                "WHERE pi.primary_fn='usb-matrix-switcher' "
+                f"WHERE pi.primary_fn IN ({','.join('?' * len(functions))}) "
                 "AND (p.stock_status IS NULL OR p.stock_status NOT IN ('Discontinued','Out of Stock','Not in Feed')) "
                 "AND (p.site_category IS NULL OR p.site_category!='Discontinued') "
                 "AND (? IS NULL OR p.inputs>=?) AND (? IS NULL OR p.outputs>=?)",
-                (hosts, hosts, devices, devices),
+                (*functions, hosts, hosts, devices, devices),
             ).fetchall()
         finally:
             conn.close()
-        return _filter_hard_requirements([row[0] for row in rows], ["usb matrix switcher"], answers, question)
+        category = "usb matrix switcher" if explicit_matrix else "usb peripheral switch"
+        return _filter_hard_requirements([row[0] for row in rows], [category], answers, question)
 
     requested_categories = ["kvm switch" if "kvm" in category.lower() else category
+                            for category in requested_categories]
+    requested_categories = ["extender" if "extensor" in category.lower() else category
                             for category in requested_categories]
     if not requested_categories and re.search(r"\bkvm\b", question, re.I):
         requested_categories = ["kvm switch"]
@@ -896,6 +921,8 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
         "presentation switcher": ["switcher"],
         "video wall":      ["switcher", "multiviewer"],
         "video wall processor": ["switcher", "multiviewer"],
+        "quad-view processor": ["switcher", "multiviewer"],
+        "video processor": ["switcher", "multiviewer"],
         "videowall":       ["switcher", "multiviewer"],
         "camera":          ["camera"],
         "cameras":         ["camera"],
@@ -935,7 +962,10 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
         "joystick":        ["controller"],
         "joystick controller": ["controller"],
         "multiviewer":     ["multiviewer"],
+        "mount":           ["accessory"],
+        "rack kit":        ["accessory"],
         "splitter":        ["splitter"],
+        "distribution amplifier": ["distribution_amp"],
         "converter":       ["converter"],
     }
 
@@ -1004,7 +1034,7 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
     question_low = question.lower()
     if re.search(r"\bndi\b", question_low):
         needs_ndi = True
-    if re.search(r"\bdante\b", question_low):
+    if re.search(r"\bdante\b", question_low) and not re.search(r"\bdante\s+(?:dsp|audio\s+processor)\b", question_low):
         needs_dante = True
     question_zoom = re.search(r"\b(10|12|20|25|30|31)\s*x\b", question_low)
     if question_zoom:
@@ -1078,10 +1108,25 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
                 is_camera=is_camera,
                 needs_ndi=needs_ndi,
                 needs_dante=needs_dante,
+                requirement=question,
             )
             if is_camera and question and "BG-NUTRIX" not in skus:
                 skus.append("BG-NUTRIX")
-            return _filter_hard_requirements(skus, requested_categories, answers, question)
+            filtered = _filter_hard_requirements(skus, requested_categories, answers, question)
+            if is_camera and zoom_filter and not filtered:
+                # No exact zoom in the required signal/resolution family: keep
+                # nearby real camera configurations as partial alternatives.
+                fallback_skus = _find_matching_skus_via_interfaces(
+                    requested_categories=expanded_cats, answers=answers,
+                    min_inputs=min_inputs, max_inputs=max_inputs,
+                    min_outputs=min_outputs, max_outputs=max_outputs,
+                    signal_filter=signal_filter, zoom_filter=None,
+                    resolution_filter=resolution_filter, is_matrix=is_matrix,
+                    is_camera=is_camera, needs_ndi=needs_ndi, needs_dante=needs_dante,
+                    requirement=question,
+                )
+                filtered = _filter_hard_requirements(fallback_skus, requested_categories, answers, question)
+            return filtered
 
         # ── Legacy fallback: plain products table query ────────────────────────
         from api.db import get_conn
@@ -1159,10 +1204,11 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
 def _filter_hard_requirements(skus: list[str], categories: list[str], answers: dict, question: str) -> list[str]:
     """Apply confirmed requirements before the LLM sees catalog candidates."""
     from api.db import get_conn
-    from api.product_rules import hard_mismatch, rank_product, requirement_text
+    from api.product_rules import hard_mismatch, rank_product, requirement_text, mentioned_catalog_skus
 
     text = requirement_text(question, answers)
     conn = get_conn()
+    mentioned = set(mentioned_catalog_skus(conn, question))
     eligible = []
     for sku in skus:
         row = conn.execute("SELECT * FROM products WHERE id=?", (sku,)).fetchone()
@@ -1174,7 +1220,9 @@ def _filter_hard_requirements(skus: list[str], categories: list[str], answers: d
         if hard_mismatch(product, interface, text, categories) is None:
             eligible.append((sku, rank_product(product, interface, text)))
     conn.close()
-    return [sku for sku, _ in sorted(eligible, key=lambda item: item[1])]
+    ranked = [sku for sku, _ in sorted(eligible, key=lambda item: item[1])]
+    named = [sku for sku in ranked if sku in mentioned]
+    return named if named else ranked
 
 
 def _deduplicate_color_variants(skus: list[str]) -> list[str]:
