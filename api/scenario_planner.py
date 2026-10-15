@@ -1038,9 +1038,11 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
     question_zoom = re.search(r"\b(10|12|20|25|30|31)\s*x\b", question_low)
     if question_zoom:
         zoom_filter = question_zoom.group(1) + "x"
-    if re.search(r"\b4\s*k\s*60\b", question_low):
+    from api.product_rules import resolution_choices
+    camera_resolution_options = is_camera and resolution_choices(question_low)
+    if not camera_resolution_options and re.search(r"\b4\s*k\s*60\b", question_low):
         resolution_filter = "4K60"
-    elif re.search(r"\b4\s*k\b", question_low):
+    elif not camera_resolution_options and re.search(r"\b4\s*k\b", question_low):
         resolution_filter = "4K"
     for q, a in answers.items():
         q_low, a_low = q.lower(), str(a).lower()
@@ -1081,13 +1083,13 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
                     m = _re.search(r'\b(10|12|20|25|30|31)\b', a_low)
                     if m:
                         zoom_filter = m.group(1) + "x"
-        if any(w in q_low for w in ("resolution", "разреш")) and not resolution_filter:
+        if any(w in q_low for w in ("resolution", "разреш")) and not resolution_filter and not camera_resolution_options:
             if   "4k60" in a_low: resolution_filter = "4K60"
             elif "4k"   in a_low: resolution_filter = "4K"
             elif "1080" in a_low: resolution_filter = "1080"
 
     if is_camera and not any("ptz" in category.lower() for category in requested_categories) and re.search(
-        r"\b(?:fixed|static)\s+(?:camera|shots?)\b", question, re.I
+        r"\b(?:fixed|static)\b.{0,35}\b(?:camera|shots?)\b", question, re.I
     ) and not re.search(r"\bexact(?:ly)?\b", question, re.I):
         zoom_filter = None
 

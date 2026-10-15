@@ -270,6 +270,25 @@ def _is_off_topic_request(message: str) -> bool:
     ))
 
 
+def _resolution_unsure(history: list[dict], user_message: str) -> bool:
+    unsure = False
+    previous = ""
+    for turn in [*history, {"role": "user", "content": user_message}]:
+        text = turn.get("content", "")
+        if turn.get("role") == "user":
+            if re.search(r"\bresolution\b.{0,20}\bnot sure\b|\bnot sure\b.{0,20}\bresolution\b", text, re.I):
+                unsure = True
+            elif re.search(r"resolution|1080p or 4K", previous, re.I):
+                if re.search(r"not sure|don['’]?t know", text, re.I):
+                    unsure = True
+                elif re.search(r"1080|4k|8k", text, re.I):
+                    unsure = False
+            elif re.fullmatch(r"\s*(?:1080p?|4k|8k)\s*[.!]?\s*", text, re.I):
+                unsure = False
+        previous = text
+    return unsure
+
+
 def _available_camera_zooms() -> list[int]:
     """Distinct optical zoom levels of cameras actually in the catalog (cached)."""
     global _CAMERA_ZOOMS_CACHE
@@ -377,6 +396,18 @@ def run_chat_turn(
     if is_usb_matrix_request(user_text):
         return _run_usb_matrix_turn(history, user_message)
 
+    if (re.search(r"audio extractor|(?:pull|extract)\b.{0,20}\baudio\b", user_text, re.I)
+            and re.search(r"\b(?:e?arc)\b", user_text, re.I)
+            and re.search(r"\b(?:soundbar|receiver)\b", user_text, re.I)
+            and ((re.search(r"external\b.{0,15}\bhdmi\b|hdmi\s+device", user_text, re.I)
+                  and re.search(r"4k|1080", user_text, re.I))
+                 or re.search(r"receiver\b.{0,25}\boptical\b", user_text, re.I))):
+        return {"message": "Got it — I'll check the audio adapters for that source and soundbar or receiver.",
+                "chips": [], "state_update": {}, "ready_to_search": True, "search_query": user_text,
+                "_scenario_plan": {"flow": "product_selection", "requested_categories": ["audio extractor"],
+                                   "scenario_summary": user_text, "scenario_type": "other", "clarifying_questions": []},
+                "_scenario_answers": {}, "_clarification_round": 0}
+
     # A direct question about a named model/series needs a catalog lookup,
     # not another round of room-design questions.
     if re.search(r"^\s*(?:is|are|does|do|compare|what(?:['’]s| is) the difference)\b", user_message, re.I):
@@ -480,7 +511,10 @@ def run_chat_turn(
     user_requests = (user_requests + " " + user_message).strip()
     known_distance = requested_distance_m(user_requests)
     known_inputs, known_outputs = requested_ports(user_requests)
-    known_resolution = bool(re.search(r"\b(?:1080\s*p?|4\s*k|8\s*k)(?:\b|(?=\d))", user_requests, re.I))
+    resolution_unsure = _resolution_unsure(history, user_message)
+    if resolution_unsure:
+        intent.pop("resolution", None)
+    known_resolution = resolution_unsure or bool(re.search(r"\b(?:1080\s*p?|4\s*k|8\s*k)(?:\b|(?=\d))", user_requests, re.I))
     asked_again = (
         (known_distance is not None and re.search(r"\b(?:how far|distance|cable run|longest|feet|meters?)\b", msg, re.I))
         or (known_resolution and re.search(r"\b(?:what|which)\b.{0,25}\bresolution\b|\b1080p or 4K\b", msg, re.I))
@@ -556,12 +590,20 @@ def run_chat_turn(
     flow       = intent.get("flow", "solution_design")
     categories = intent.get("requested_categories") or []
     fixed_shots = "ptz" not in _user_text and (
-        bool(re.search(r"\b(?:fixed|static)\s+(?:camera|shots?)\b", _user_text))
+        bool(re.search(r"\b(?:fixed|static)\b.{0,35}\b(?:camera|shots?)\b", _user_text))
         or ("podcast" in _user_text and "edit afterward" in _user_text)
     )
     if fixed_shots:
         categories = ["camera" if "camera" in str(category).lower() else category for category in categories]
         sq = re.sub(r"\bptz\s+cameras?\b", "cameras for fixed shots", sq, flags=re.I)
+    special_needs = [str(item) for item in (intent.get("special_needs") or [])]
+    if fixed_shots:
+        special_needs.append("fixed shots")
+    if re.search(r"\bauto[ -]?track(?:ing)?\b", _user_text) and not re.search(r"\b(?:no|without)\s+auto[ -]?track(?:ing)?\b", _user_text):
+        special_needs.append("auto tracking required")
+    intent["special_needs"] = list(dict.fromkeys(special_needs))
+    if ready and special_needs:
+        sq += "; " + "; ".join(intent["special_needs"])
     if re.search(r"\bkvm\b", _user_text, re.I):
         categories = ["kvm switch" if "kvm" in str(category).lower() else category
                       for category in categories]
@@ -687,6 +729,8 @@ def _intent_to_answers(intent: dict) -> dict:
         ans["Dante needed?"] = "no - standard only"
     if intent.get("venue_type"):
         ans["Venue type?"] = intent["venue_type"]
+    if intent.get("special_needs"):
+        ans["Special requirements?"] = "; ".join(str(item) for item in intent["special_needs"])
     return ans
 
 

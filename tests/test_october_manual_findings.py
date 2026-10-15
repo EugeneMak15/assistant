@@ -105,6 +105,51 @@ class OctoberManualFindings(unittest.TestCase):
         self.assertIn('BG-8K-AE', skus)
         self.assertNotIn('BG-8K-AA', skus)
 
+    def test_soundbar_input_already_known_does_not_get_reasked(self):
+        with patch('api.chat.OpenAI') as client:
+            result = run_chat_turn([], 'My soundbar needs HDMI ARC/eARC audio from an external 4K HDMI device feeding my TV. I need an HDMI audio extractor.', {})
+        self.assertTrue(result['ready_to_search'])
+        client.assert_not_called()
+
+    def test_hd_or_four_k_options_include_hd_box_camera(self):
+        skus = find(['camera'], {'Signal type?': 'USB'},
+                    'Compare both 1080p and 4K USB cameras for fixed shots, 12x zoom')
+        self.assertEqual(skus[0], 'BG-PACKSHOT-C10X')
+        self.assertIn('BG-ADAMO-4K12X-B', skus)
+
+    def test_tracking_requirement_excludes_manual_only_cameras(self):
+        skus = find(['ptz camera'], {}, 'Two 1080p NDI auto-tracking cameras with 25x zoom')
+        self.assertEqual(skus[0], 'BG-ADAMO-JRND30X-B')
+        self.assertNotIn('BG-ND-30XHSRP', skus)
+
+    def test_explicit_tracking_survives_an_incomplete_llm_query(self):
+        import json
+        payload = {'message': 'Let me search.', 'ready_to_search': True,
+                   'search_query': '1080p NDI PTZ cameras with 25x zoom',
+                   'intent': {'flow': 'product_selection', 'requested_categories': ['ptz camera'],
+                              'signal_type': 'NDI', 'resolution': '1080p', 'zoom': '25x'}}
+        response = types.SimpleNamespace(usage=None, choices=[types.SimpleNamespace(
+            message=types.SimpleNamespace(content=json.dumps(payload)))])
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'test'}), patch('api.chat.OpenAI') as client:
+            client.return_value.chat.completions.create.return_value = response
+            result = run_chat_turn([], 'Two 1080p NDI auto-tracking cameras, 25x close-ups', {})
+        self.assertIn('auto tracking required', result['search_query'])
+        self.assertEqual(find(result['_scenario_plan']['requested_categories'], result['_scenario_answers'], result['search_query'])[0], 'BG-ADAMO-JRND30X-B')
+
+    def test_not_sure_is_a_valid_resolution_answer(self):
+        import json
+        payload = {'message': 'What resolution do you need?', 'ready_to_search': False,
+                   'intent': {'flow': 'product_selection', 'requested_categories': ['ptz camera'],
+                              'signal_type': 'USB', 'resolution': '4K'}}
+        response = types.SimpleNamespace(usage=None, choices=[types.SimpleNamespace(
+            message=types.SimpleNamespace(content=json.dumps(payload)))])
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'test'}), patch('api.chat.OpenAI') as client:
+            client.return_value.chat.completions.create.return_value = response
+            result = run_chat_turn([], 'USB cameras for fixed individual close-up shots. Resolution is not sure.', {})
+        self.assertTrue(result['ready_to_search'])
+        self.assertNotIn('Resolution?', result['_scenario_answers'])
+        self.assertEqual(result['_scenario_plan']['requested_categories'], ['camera'])
+
 
 if __name__ == '__main__':
     unittest.main()

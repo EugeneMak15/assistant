@@ -28,6 +28,13 @@ def requested_video(text: str) -> tuple[bool, bool]:
     )
 
 
+def resolution_choices(text: str) -> bool:
+    """Comparing HD and 4K camera options does not require every option to be 4K."""
+    return bool(re.search(r"\b1080\s*p?\b.{0,15}\bor\b.{0,10}\b4\s*k\b|\b4\s*k\b.{0,15}\bor\b.{0,10}\b1080\s*p?\b", text, re.I)
+                or (re.search(r"\b(?:compare|comparing|both)\b", text, re.I)
+                    and re.search(r"\b1080\s*p?\b.{0,15}\band\b.{0,10}\b4\s*k\b", text, re.I)))
+
+
 def is_selected_source_distribution(text: str) -> bool:
     """A selected source mirrored to displays is a splitter, not a matrix."""
     if not re.search(r"\b(?:sources?|inputs?)\b", text, re.I) or not re.search(
@@ -181,6 +188,9 @@ def hard_mismatch(product: dict, interface: dict | None, text: str, categories: 
         return "dedicated audio converter required"
     if "camera" in cats and "bundle" not in cats and product.get("category") != "camera":
         return "standalone PTZ camera required"
+    if product.get("category") == "camera" and re.search(r"\bauto[ -]?track(?:ing)?\b", text, re.I) and not re.search(r"\b(?:no|without)\s+auto[ -]?track(?:ing)?\b", text, re.I):
+        if interface.get("has_autotrack") != 1:
+            return "automatic camera tracking required"
     if "videobar" in cats and "extension microphone" in name:
         return "video bar required, not its microphone accessory"
     is_extender = product.get("category") == "extender" or "extender" in cats
@@ -252,7 +262,11 @@ def hard_mismatch(product: dict, interface: dict | None, text: str, categories: 
 
     need_8k, need_4k120 = requested_video(text)
     need_4k = bool(re.search(r"\b4\s*k(?:\b|(?=\d))", text, re.I))
+    if product.get("category") == "camera" and resolution_choices(text):
+        need_4k = False
     need_4k60 = bool(re.search(r"\b4\s*k\s*(?:@|/|at)?\s*60\b", text, re.I))
+    if product.get("category") == "camera" and resolution_choices(text):
+        need_4k60 = False
     if (product.get("category") == "capture" and (need_8k or need_4k120)
             and re.search(r"\b(?:capture|record|stream)\b", text, re.I)
             and not re.search(r"\b(?:input|loop.?out|pass.?through)\b", text, re.I)):
@@ -344,7 +358,7 @@ def rank_product(product: dict, interface: dict | None, text: str) -> tuple:
     zoom_gap = 0
     resolution_overkill = 0
     movement_overkill = 0
-    if product.get("category") == "camera" and re.search(r"\b(?:fixed|static)\s+(?:camera|shots?)\b", text, re.I) and "ptz" not in text.lower():
+    if product.get("category") == "camera" and re.search(r"\b(?:fixed|static)\b.{0,35}\b(?:camera|shots?)\b", text, re.I) and "ptz" not in text.lower():
         movement_overkill = int(interface.get("primary_fn") == "camera-ptz")
     if product.get("category") == "camera" and re.search(r"\b1080\s*p?\b", text, re.I) and not re.search(r"\b4\s*k\b", text, re.I):
         resolution_overkill = int(bool(interface.get("supports_4k")))

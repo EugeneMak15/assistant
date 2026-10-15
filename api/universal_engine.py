@@ -641,6 +641,10 @@ def _verified_shipping_suffix(answer: str, products: list[dict]) -> str:
 
 
 SANITY_FILTER_SYSTEM = """You are a strict AV product pre-screener. Filter candidates ruthlessly — only keep products that genuinely fit.
+An optical zoom rating is a maximum: 30x can provide a 25x shot, so it is a perfect zoom match unless exactly 25x hardware was required.
+Use the structured interface's optical zoom for the specific SKU, rather than a generic family overview that may describe another zoom variant.
+"1080p or 4K options" is a comparison, not a 4K-only requirement. Keep both fitting resolution tiers.
+For automatic tracking, use the verified tracking capability; do not treat ordinary PTZ control as automatic tracking.
 
 Given:
 - Customer's requirement (category, inputs/outputs, venue/distance context)
@@ -652,8 +656,8 @@ Classify each product as KEEP or REMOVE.
 REMOVAL RULES — apply all, be strict:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-RULE 0 — ACCESSORIES (always remove, no exceptions):
-Remove ALL accessory products. Accessories are NEVER part of main product recommendations.
+RULE 0 — ACCESSORIES:
+Keep accessories only when the customer explicitly asks for a compatible mount or rack kit; otherwise remove them.
 Indicators: SKU contains "-ACC-", or product is described as a rack bracket / mounting bracket / blank panel / cable management.
 Examples to always remove: BG-IPGEAR-PRO-ACC-RM10, BG-VOP-ACC-RM10, BG-IPGEAR-ULTRA-ACC-RM, BG-VPTZ-CM, BG-VPTZ-WM, BG-VPTZ-TPM.
 
