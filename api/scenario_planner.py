@@ -679,9 +679,6 @@ def _find_matching_skus_via_interfaces(
     if is_matrix and min_inputs:
         sql += " AND pi.in_hdmi_count >= ?"
         params.append(min_inputs)
-        if max_inputs:
-            sql += " AND pi.in_hdmi_count <= ?"
-            params.append(max_inputs)
         # Matrix must have at least 2 outputs (exclude 4x1 selectors)
         sql += " AND pi.out_hdmi_count >= 2"
     elif min_inputs and not is_camera:
@@ -724,8 +721,10 @@ def _find_matching_skus_via_interfaces(
                 zmin, zmax = int(lo) - 1, int(hi) + 1
             else:
                 zoom_n = int(zf)
-                # single value: allow a small upper tolerance
-                zmin, zmax = zoom_n - 1, zoom_n + 3
+                # A 30x lens can provide a 25x close-up. Only an explicitly
+                # exact configuration should rule out a higher zoom model.
+                zmin = zoom_n - 1
+                zmax = zoom_n + 3 if re.search(r"\bexact(?:ly)?\b", requirement, re.I) else max(31, zoom_n + 3)
             sql += " AND pi.zoom_optical >= ? AND pi.zoom_optical <= ?"
             params.append(zmin)
             params.append(zmax)
@@ -1086,6 +1085,11 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
             if   "4k60" in a_low: resolution_filter = "4K60"
             elif "4k"   in a_low: resolution_filter = "4K"
             elif "1080" in a_low: resolution_filter = "1080"
+
+    if is_camera and not any("ptz" in category.lower() for category in requested_categories) and re.search(
+        r"\b(?:fixed|static)\s+(?:camera|shots?)\b", question, re.I
+    ) and not re.search(r"\bexact(?:ly)?\b", question, re.I):
+        zoom_filter = None
 
     try:
         # ── Fast path: use structured product_interfaces table if ready ───────

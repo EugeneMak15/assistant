@@ -47,6 +47,9 @@ except (OSError, ValueError):
 SYSTEM_PROMPT = f"""You are an expert AV systems integrator for BZB Gear — a professional AV equipment company.
 Keep the answer under 180 words: one short reason per recommended device and a linkable SKU. Put detail behind product links.
 Present camera configurations as one model family with available zoom and color choices.
+For 1080p production, consider ADAMO-JR before the 4K family when it provides sufficient zoom and the required outputs.
+A 30x optical lens can supply a 25x close-up. For fixed podcast shots, consider box cameras such as PACKSHOT;
+do not require motorized PTZ or a joystick unless the workflow needs camera movement.
 BG-NUTRIX is a medical-only camera; never recommend it outside an explicitly medical scenario.
 
 You have three knowledge sources. Use ALL of them:
@@ -75,7 +78,7 @@ YOUR REASONING PROCESS (think step by step):
    → Start your response by acknowledging this focus:
      "You're looking for [X] — here are all the options from our catalog that match your specs."
    → For product_selection: DO NOT use the Option A / Option B format.
-     Instead, LIST ALL products from the catalog that fit the customer's specs for that category.
+     Instead, select up to three distinct best-fit options and group cosmetic variants.
      For EACH product explain:
        • Why it fits (specs match)
        • What makes it different from the others in the list
@@ -87,7 +90,7 @@ YOUR REASONING PROCESS (think step by step):
    FLOW TYPE: solution_design
    → The customer described a full setup need (room, venue, or workflow).
    → Design the complete system. Identify all required equipment roles.
-   → Generate TWO options representing different approaches (as described below).
+   → Give the simplest complete approach; add a second only when it offers a useful trade-off.
 
 1. UNDERSTAND THE SCENARIO
    - What is the customer trying to achieve?
@@ -127,6 +130,10 @@ YOUR REASONING PROCESS (think step by step):
      → use ONLY if no other selected product already provides monitoring
    - BG-IPGEAR-ULTRA-C: AV-over-IP routing controller + web UI
    - BG-4K-VP series: matrix switcher + video wall processor in one
+   - Matrix kits with included CAT receivers: routing plus extension. Check their actual output count and distance.
+   - BG-UDAIC splitter kits: distribution plus CAT extension. Consider these alongside separate splitter/extender combinations.
+   Plain HDMI matrices can cost less than the VP series when seamless switching, multiview and video-wall processing are not needed.
+   For a three-screen menu wall, compare lower-cost video-wall processors; disclose when a unit accepts 4K but outputs only 1080p.
 
    PROCESS:
    a) List all required roles
@@ -143,7 +150,8 @@ YOUR REASONING PROCESS (think step by step):
      ⚠️ SCALE RULE — match technology to actual scale and distance:
 
      Small-medium scale (≤ 16 displays, distance ≤ 70m):
-     • Option A — Matrix Switcher + HDBaseT: BG-4K-VP series (up to 16×16) + BG-EXH extender per display
+     • Option A — Right-sized matrix or matrix kit: compare standard matrices with integrated CAT-extension kits.
+       Never recommend only extenders for independent multi-source routing; name the matrix that performs the routing.
        Best for: fixed topology, simple management, no networking required
      • Option B — AV-over-IP: IPGEAR encoders + decoders + managed switch
        Best for: distance > 70m, growing/flexible setups, existing network infrastructure
@@ -205,6 +213,9 @@ YOUR REASONING PROCESS (think step by step):
    - These DO need audio mixing consoles or DSP matrices — audio is complex multi-source
 
 5. ⚠️ BZB-FIRST WORKFLOW RULE (CRITICAL):
+   Prefer the simplest workflow that covers the customer's need. An NDI production PC can receive camera feeds
+   directly and switch/stream in software. Do not add NDI-to-HDMI decoders plus a hardware switcher unless
+   the customer wants hardware production or the chosen workflow actually requires those conversions.
    You MUST first try to build a complete workflow using ONLY BZB Gear products.
    If a role is not covered by BZB Gear, evaluate:
    a) Can the workflow be redesigned to eliminate this role entirely?
@@ -220,6 +231,8 @@ YOUR REASONING PROCESS (think step by step):
       — describe the TYPE of device needed (no brand names), explain if optional
 
 6. ⚠️ DISTANCE-FIRST RULE (CRITICAL for any distribution scenario):
+   Camera-to-subject distance describes framing, not cable length. Without camera-to-PC distance,
+   do not select a USB extension or convert a subject distance into a cable run.
    NEVER recommend signal extenders (HDBaseT, fiber) or AV-over-IP encoders/decoders
    without knowing the cable run distance. The right product is entirely determined by distance:
    • ≤5m → HDMI cable direct (no extender needed)
@@ -431,8 +444,8 @@ Accessories are mounting brackets, rack kits, and cable management — suggest t
 
 RULE A2 — TAA: If the customer requires TAA, only SKUs marked [TAA verified] in the catalog qualify. Never infer compliance from similar products.
 
-RULE B — LARGE SCALE AV-OVER-IP: If the scenario requires 20 or more display outputs, OR cable distances over 70m:
-  - DO NOT include any matrix switchers or HDBaseT kits — they cannot scale to this requirement.
+RULE B — LARGE SCALE AV-OVER-IP: For large distribution systems, compare AV-over-IP with available matrix kits.
+  - Use verified capacity and extension distance; 70m is not a universal limit for all matrix kits.
   - Select AV-over-IP product lines based on the required resolution:
 
   If resolution = 1080p (or not specified):
@@ -819,7 +832,7 @@ def _sanity_filter_candidates(
         candidate_skus = ranked_skus[:8]
     products = [p for p in products if p["id"] in set(candidate_skus)]
     if len(candidate_skus) == 1:
-        return candidate_skus, []
+        return _apply_hard_feature_rules(candidate_skus, [], answers, plan, requirement=requirement)
 
     product_context = _build_product_context(products)
 
@@ -893,6 +906,9 @@ def _sanity_filter_candidates(
         perfect, partial = _apply_hard_feature_rules(
             perfect, partial, answers, plan, conn_ref=None, requirement=requirement
         )
+        if "BG-UHD-VWP-1X4" in candidate_skus and "wall" in requirement and re.search(r"\b(?:budget|cheaper|affordable|lower.cost)\b", requirement, re.I):
+            if "BG-UHD-VWP-1X4" not in perfect + partial:
+                partial.append("BG-UHD-VWP-1X4")
 
         # The optional LLM classifier can omit a whole requested device type.
         # Keep the best hard-eligible candidate for that role as a partial match
@@ -942,18 +958,26 @@ def _apply_hard_feature_rules(
         feature_checks.append(("ndi", ["ndi", "network device interface"]))
 
     zoom_match = re.search(r"\b(\d{1,2})\s*x\s*(?:zoom)?\b", requirement, re.I)
-    if not feature_checks and not zoom_match:
+    wall_4k = "wall" in requirement.lower() and bool(re.search(r"\b4\s*k", requirement, re.I))
+    if not feature_checks and not zoom_match and not wall_4k:
         return perfect, partial
 
     conn = get_conn()
     demoted = []
     for sku in list(perfect):
+        if wall_4k and sku in {"BG-UHD-VWP-1X4", "BG-UHD-VW2X2"}:
+            perfect.remove(sku)
+            if sku not in partial:
+                partial.append(sku)
+            demoted.append((sku, "1080p wall outputs, not native 4K"))
+            continue
         row = conn.execute("""SELECT p.name, p.what_it_does, pi.out_ndi, p.category, pi.zoom_optical
                               FROM products p LEFT JOIN product_interfaces pi ON pi.sku=p.id
                               WHERE p.id=?""", (sku,)).fetchone()
         if not row:
             continue
-        if zoom_match and row[3] == "camera" and row[4] != int(zoom_match.group(1)):
+        if zoom_match and row[3] == "camera" and (not row[4] or row[4] < int(zoom_match.group(1)) or
+                (re.search(r"\bexact(?:ly)?\b", requirement, re.I) and row[4] != int(zoom_match.group(1)))):
             perfect.remove(sku)
             if sku not in partial:
                 partial.append(sku)
@@ -992,9 +1016,9 @@ The customer asked about a specific product category. You are given TWO lists of
 - PARTIAL MATCHES: products in the right category but MISSING one or more requested features
 
 CRITICAL: Your main analysis depends on which section you receive:
-- If you receive "PERFECT MATCHES" → analyze ONLY those. Do NOT mention PARTIAL MATCHES in your text (they are shown separately in the UI).
+- If you receive "PERFECT MATCHES" → focus on those. When the customer asks for cheaper options, you may also name one lower-cost PARTIAL MATCH with its limitation clearly stated.
 - If you receive "CLOSEST MATCHES" (meaning no perfect matches exist) → analyze those honestly, make clear what each product is missing vs. what the customer asked for, and explain trade-offs. Do NOT pretend they are perfect.
-- "PARTIAL MATCHES" section (when present alongside PERFECT MATCHES) → ignore entirely in your text output.
+- "PARTIAL MATCHES" alongside perfect matches are alternatives, not equivalents. For a budget video wall, disclose 4K input versus 1080p output explicitly.
 
 Keep the response under 80 words. The product cards link to full specifications.
 For cameras, describe a model family once and state available zoom and color configurations.
@@ -1020,7 +1044,7 @@ catalog SKU including any variant suffix (e.g. BG-UPTZ-20XHSU-B, not BG-UPTZ-20X
 If multiple device types were requested, lead with one SKU and name the companion SKU inside the reason.
 
 RULES:
-- Analyze ONLY products from the PERFECT MATCHES list — never mention partial matches in your text
+- Prioritize perfect matches; describe a partial match only with its limitation when it covers a missing category or an explicitly requested budget alternative.
 - Base specs on the product data provided, not on general knowledge
 - Never recommend products not in the provided list
 - Do not use markdown heading syntax (no # or ## or ###)
@@ -1099,13 +1123,8 @@ def _build_flow_a_system(scenario_type: str = "", multi_category: bool = False) 
         prompt = prompt.replace(
             "The customer asked about a specific product category.",
             "The customer asked for multiple device categories; they need all of them together.",
-        ).replace(
-            "- If you receive \"PERFECT MATCHES\" → analyze ONLY those. Do NOT mention PARTIAL MATCHES in your text (they are shown separately in the UI).",
-            "- For EACH requested category, discuss a perfect match if available; otherwise mention its closest partial match and the limitation. Never omit an entire requested category.",
-        ).replace(
-            "- \"PARTIAL MATCHES\" section (when present alongside PERFECT MATCHES) → ignore entirely in your text output.",
-            "- PARTIAL MATCHES for a category with no perfect match must still be addressed briefly and honestly.",
         )
+        prompt += "\nFor EACH requested category, discuss a perfect match if available; otherwise describe its closest partial match and limitation. Never omit an entire requested category.\n"
     return prompt
 
 
@@ -1322,6 +1341,41 @@ def stream_flow_a_recommendation(
     yield ("done", "")
 
 
+def _distribution_role_hints(question: str, session: dict) -> tuple[str, list[str]]:
+    """Keep the routing device in a complete distribution recommendation."""
+    from api.product_rules import requested_ports
+    from api.scenario_planner import _find_matching_skus_for_flow_a
+    from api.db import get_conn
+
+    text = question.lower()
+    if "wall" in text or ("sdi" in text and "hdmi" not in text):
+        return "", []
+    inputs, outputs = requested_ports(text)
+    inputs = inputs or session.get("num_inputs")
+    outputs = outputs or session.get("num_outputs")
+    if not inputs or not outputs or outputs < 2:
+        return "", []
+    independent = bool(re.search(r"\bmatrix\b|\bindependent\b|\bdifferent (?:games|sources|content)\b", text))
+    mirrored = bool(re.search(r"\b(?:same|mirror|mirrored|identical)\b", text))
+    role = "matrix switcher" if independent else "splitter" if inputs == 1 or mirrored else ""
+    if not role:
+        return "", []
+    answers = {"How many inputs?": str(inputs), "How many outputs?": str(outputs)}
+    candidates = _find_matching_skus_for_flow_a([role], answers, question)
+    conn = get_conn()
+    try:
+        integrated = []
+        for sku in candidates:
+            row = conn.execute("SELECT name, what_it_does, specs_json, max_distance_m FROM products WHERE id=?", (sku,)).fetchone()
+            evidence = " ".join(str(value or "") for value in row[:3]).lower()
+            if (sku.endswith("-KIT") or (row[3] and '"receiver"' in (row[2] or "").lower())
+                    or (role == "splitter" and row[3] and re.search(r"\b(?:extend|extends|extender|cat)\b", evidence))):
+                integrated.append(sku)
+        return role, list(dict.fromkeys(candidates[:2] + integrated[:2]))
+    finally:
+        conn.close()
+
+
 def get_universal_recommendation(
     question: str,
     session: dict,
@@ -1345,14 +1399,17 @@ def get_universal_recommendation(
     from api.product_rules import MEDICAL_TERMS
     medical_context = bool(MEDICAL_TERMS.search(question))
     pass1_skus = _pass1_select_skus(question, session_info)
+    routing_role, routing_skus = _distribution_role_hints(question, session_info)
     from api.product_rules import mentioned_catalog_skus
-    from api.db import get_conn
+    from api.db import get_conn, row_to_dict
     conn = get_conn()
     try:
         named_skus = mentioned_catalog_skus(conn, question)
+        routing_products = [row_to_dict(conn.execute("SELECT * FROM products WHERE id=?", (sku,)).fetchone())
+                            for sku in routing_skus]
     finally:
         conn.close()
-    pass1_skus = list(dict.fromkeys(named_skus[:8] + pass1_skus))
+    pass1_skus = list(dict.fromkeys(routing_skus + named_skus[:8] + pass1_skus))
     if not medical_context:
         pass1_skus = [s for s in pass1_skus if s != "BG-NUTRIX"]
         candidate_skus = [s for s in (candidate_skus or []) if s != "BG-NUTRIX"]
@@ -1370,6 +1427,9 @@ def get_universal_recommendation(
         f"These SKUs were identified in a fast pre-scan — verify and refine:\n"
         + "\n".join(f"- {s}" for s in pass1_skus)
     ) if pass1_skus else ""
+    if routing_skus:
+        pass1_note += f"\nRequired distribution role: {routing_role}. Name the routing device, not only extenders.\n"
+        pass1_note += _build_product_context(routing_products)
 
     user_message = f"""## Customer Requirements
 {json.dumps(session_info, indent=2, default=str)}
@@ -1398,6 +1458,17 @@ Verify signal compatibility at every link and show the complete chain.
         # Fail closed if the model ignores the medical-only restriction.
         answer = "\n".join(line for line in answer.splitlines() if "BG-NUTRIX" not in line.upper()).strip()
     found_skus = sorted(set(_SKU_RE.findall(answer.upper())))
+    eligible_routing = set()
+    if routing_skus:
+        from api.scenario_planner import _find_matching_skus_for_flow_a
+        routing_answers = {"How many inputs?": str(session_info.get("num_inputs") or ""),
+                           "How many outputs?": str(session_info.get("num_outputs") or "")}
+        eligible_routing = set(_find_matching_skus_for_flow_a([routing_role], routing_answers, question))
+    if routing_skus and not eligible_routing.intersection(found_skus):
+        # The fast scan and final model must not silently omit independent routing.
+        product = routing_products[0]
+        answer += f"\n\nRequired routing: [{product['id']}]({product['product_url']}) — the {routing_role} for the sources and displays; extenders alone do not provide routing."
+        found_skus = sorted(set(found_skus + [product["id"]]))
     if found_skus:
         from api.db import get_conn
         conn = get_conn()

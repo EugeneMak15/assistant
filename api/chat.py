@@ -12,6 +12,10 @@ from .usage import record_usage
 CONSULTANT_SYSTEM = """You are Alex, a senior AV Sales Consultant with 20 years of field installation experience.
 
 YOUR JOB: Gather just enough info to find the right product, then trigger search. Keep it tight — 4-6 questions max.
+SCOPE: Only help with AV equipment selection, AV system planning, compatibility and troubleshooting.
+Decline unrelated math, trivia, poems, creative writing and social-media copy, including poems about AV products.
+For these requests set scope="off_topic", ready_to_search=false, and briefly redirect to AV equipment.
+AV-related quantities, prices and bandwidth calculations are in scope.
 Keep each reply to one brief question or two short sentences. Product links provide the full specifications.
 BG-NUTRIX is a medical-only camera; consider it only when the customer explicitly describes a medical use.
 
@@ -64,6 +68,10 @@ DISTRIBUTION (delivering content to screens — passive, no camera involved):
     When: retail signage, restaurant menus, waiting areas.
 
 CAPTURE / PRODUCTION (creating and switching live video — involves cameras):
+  Camera selection: consider fixed box cameras for static podcast shots, PTZ cameras when movement or presets are needed,
+  and all-in-one video bars for conferencing. Do not turn every camera request into a PTZ requirement.
+  Camera-to-subject distance determines framing. It is NOT the camera-to-PC cable length.
+  Never infer a USB extension from subject distance; ask camera-to-PC distance before choosing a USB extender.
   PTZ Camera — remotely controlled camera (pan/tilt/zoom) for capturing presenters or scenes.
     When: conference rooms (for video calls), houses of worship, live events, broadcast studios.
     NOT relevant for: bars, restaurants, retail, hotel lobbies (unless they explicitly want to film something).
@@ -129,6 +137,14 @@ PTZ camera (production / worship):
      Chips: ["1080p", "4K", "Not sure"]
   5. Dante audio needed?
   → Trigger search when zoom + signal type + resolution are known.
+  A larger optical zoom can achieve a smaller requested zoom. For 1080p needs, consider ADAMO-JR before 4K models.
+  For NDI streaming, ask whether an existing production PC will be used. Software can receive NDI directly;
+  decoders and a hardware production switcher are needed only when the customer chooses that workflow.
+
+USB capture:
+  The current BZBGEAR capture catalog uses external USB connections. Never offer PCIe as an available choice.
+  Ask about capture resolution and HDMI passthrough requirements. If PCIe is explicitly requested, explain
+  that only USB alternatives are listed; do not promise a PCIe product.
 
 PTZ camera (conferencing):
   1. Room size?
@@ -206,6 +222,7 @@ Examples:
 OUTPUT FORMAT — always valid JSON
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 {
+  "scope": "av_selection | off_topic",
   "message": "acknowledge what they said + ask exactly one specific question",
   "chips": ["option1", "option2", "option3"],
   "ready_to_search": false,
@@ -218,6 +235,7 @@ OUTPUT FORMAT — always valid JSON
     "num_inputs": null,
     "num_outputs": null,
     "distance_m": null,
+    "subject_distance_m": null,
     "resolution": null,
     "signal_type": null,
     "zoom": null,
@@ -237,6 +255,19 @@ When ready_to_search=true:
 
 
 _CAMERA_ZOOMS_CACHE: list[int] | None = None
+
+_SCOPE_REPLY = "I can help with AV equipment and setups. What equipment or connection do you need help with?"
+
+
+def _is_off_topic_request(message: str) -> bool:
+    if re.search(r"\b(?:write|compose|generate|create)\b.{0,65}\b(?:poem|poetry|lyrics|social[ -]?media (?:posts?|copy)|(?:a |some )?posts?)\b", message, re.I | re.S):
+        return True
+    if re.search(r"\b(?:most popular song|current weather|weather forecast)\b", message, re.I):
+        return True
+    math_request = bool(re.search(r"\b(?:calculate|solve|what['’]?s|what is)\b", message, re.I) or re.search(r"[+*/=]", message))
+    return bool(math_request and re.search(r"\d[\d,]*\s*[×x*+/=]\s*\d", message, re.I) and not re.search(
+        r"\b(?:av|hdmi|sdi|usb|matrix|splitter|camera|switch|tv|display|screen|input|output|bandwidth|cost|price|feet|meters?)\b", message, re.I
+    ))
 
 
 def _available_camera_zooms() -> list[int]:
@@ -336,12 +367,19 @@ def run_chat_turn(
     """
     from .product_rules import is_usb_matrix_request, is_selected_source_distribution, requested_ports, requested_distance_m
     user_text = " ".join(h.get("content", "") for h in history if h.get("role") == "user") + " " + user_message
+    if _is_off_topic_request(user_message):
+        return {"message": _SCOPE_REPLY, "chips": [], "state_update": {},
+                "ready_to_search": False, "search_query": ""}
+    if re.search(r"\bpcie\b", user_message, re.I) and re.search(r"\b(?:capture|card)\b", user_message, re.I):
+        return {"message": "Our listed capture devices connect externally over USB; no PCIe capture card is listed. Would USB work for your setup?",
+                "chips": ["USB works", "I need PCIe"], "state_update": {},
+                "ready_to_search": False, "search_query": ""}
     if is_usb_matrix_request(user_text):
         return _run_usb_matrix_turn(history, user_message)
 
     # A direct question about a named model/series needs a catalog lookup,
     # not another round of room-design questions.
-    if re.search(r"^\s*(?:is|are|does|do|compare|what(?:'s| is) the difference)\b", user_message, re.I):
+    if re.search(r"^\s*(?:is|are|does|do|compare|what(?:['’]s| is) the difference)\b", user_message, re.I):
         from .product_rules import mentioned_catalog_skus
         from .db import get_conn
         conn = get_conn()
@@ -354,7 +392,7 @@ def run_chat_turn(
         finally:
             conn.close()
         if mentioned and categories:
-            aliases = {"camera": "ptz camera", "av_over_ip": "av over ip",
+            aliases = {"camera": "camera", "av_over_ip": "av over ip",
                        "controller": "ptz controller", "audio": "audio converter"}
             requested = list(dict.fromkeys(aliases.get(category, category) for category in categories))
             return {
@@ -433,6 +471,9 @@ def run_chat_turn(
     ready    = bool(data.get("ready_to_search"))
     msg      = data.get("message", "")
     sq       = data.get("search_query", "")
+    if data.get("scope") == "off_topic":
+        return {"message": _SCOPE_REPLY, "chips": [], "state_update": {},
+                "ready_to_search": False, "search_query": ""}
 
     from .product_rules import requested_distance_m, requested_ports
     user_requests = " ".join(h.get("content", "") for h in history if h.get("role") == "user")
@@ -514,6 +555,13 @@ def run_chat_turn(
     # Build scenario plan from intent (used by SQL filter downstream)
     flow       = intent.get("flow", "solution_design")
     categories = intent.get("requested_categories") or []
+    fixed_shots = "ptz" not in _user_text and (
+        bool(re.search(r"\b(?:fixed|static)\s+(?:camera|shots?)\b", _user_text))
+        or ("podcast" in _user_text and "edit afterward" in _user_text)
+    )
+    if fixed_shots:
+        categories = ["camera" if "camera" in str(category).lower() else category for category in categories]
+        sq = re.sub(r"\bptz\s+cameras?\b", "cameras for fixed shots", sq, flags=re.I)
     if re.search(r"\bkvm\b", _user_text, re.I):
         categories = ["kvm switch" if "kvm" in str(category).lower() else category
                       for category in categories]
@@ -621,6 +669,8 @@ def _intent_to_answers(intent: dict) -> dict:
         ans["How many displays/outputs?"] = str(intent["num_outputs"])
     if intent.get("distance_m"):
         ans["Distance to furthest display?"] = str(intent["distance_m"]) + "m"
+    if intent.get("subject_distance_m"):
+        ans["Camera-to-subject distance?"] = str(intent["subject_distance_m"]) + "m"
     if intent.get("resolution"):
         ans["Resolution?"] = intent["resolution"]
     if intent.get("signal_type"):
@@ -651,6 +701,8 @@ def _normalise_res(r: str) -> str:
 
 FOLLOWUP_SYSTEM = """You are Alex, a senior AV consultant. The customer has ALREADY received a product search
 result for a specific need, and is now asking follow-up questions in the same chat.
+Only answer AV selection, compatibility and setup questions. Decline poems, unrelated math, trivia,
+and social-media writing, even if they mention HDMI or the brand. Set scope="off_topic" for these requests.
 
 You are given:
 - TOPIC: what this chat's search was about
@@ -671,6 +723,7 @@ CASE 2 — REVISED REQUIREMENTS (search again in this same chat):
   The customer corrects or adds a requirement to the SAME setup (a new output type,
   more/fewer inputs or displays, a different resolution, distance, budget, protocol,
   camera plus switcher instead of only one, or asks for other matching products).
+  "Are there cheaper options?" means search the full catalog again; it is not limited to PRODUCTS FOUND.
   The previous product list may now be wrong or incomplete. Do not answer from it.
   → Set "refine_search": true. Keep "new_topic": false. Reply with a short acknowledgement
     such as "Got it — I'll update the search with that requirement."
@@ -685,6 +738,7 @@ CASE 3 — DIFFERENT TOPIC (suggest a new chat):
 
 Reply as JSON only:
 {
+  "scope": "av_selection | off_topic",
   "message": "your reply to the customer",
   "new_topic": false,
   "refine_search": false
@@ -701,6 +755,11 @@ def run_followup_turn(history: list[dict], user_message: str, results: dict) -> 
     `results` = { "topic": str, "products": [ {id, name, price_usd, ...} ], "rec_text": str }
     Returns { "message": str, "suggest_new_chat": bool, "refine_search": bool }
     """
+    if _is_off_topic_request(user_message):
+        return {"message": _SCOPE_REPLY, "suggest_new_chat": False, "refine_search": False}
+    if re.search(r"\b(?:cheaper options?|cheaper models?|less expensive options?|lower[- ]cost alternatives?|more affordable options?)\b", user_message, re.I):
+        return {"message": "I'll look across the catalog for lower-cost options for the same setup.",
+                "suggest_new_chat": False, "refine_search": True}
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
     # Build a compact product context (SKU, name, price, a few specs)
@@ -753,6 +812,8 @@ def run_followup_turn(history: list[dict], user_message: str, results: dict) -> 
     except Exception:
         data = {"message": "Sorry, could you rephrase that?", "new_topic": False}
 
+    if data.get("scope") == "off_topic":
+        return {"message": _SCOPE_REPLY, "suggest_new_chat": False, "refine_search": False}
     return {
         "message": data.get("message", ""),
         "suggest_new_chat": bool(data.get("new_topic")),

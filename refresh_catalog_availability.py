@@ -59,6 +59,8 @@ def plan_updates(conn: sqlite3.Connection, feed: dict[str, dict], taa_skus: set[
     spec_updates = []
     category_updates = []
     taa_updates = []
+    interface_updates = []
+    has_interfaces = bool(conn.execute("SELECT 1 FROM sqlite_master WHERE name='product_interfaces'").fetchone())
     for sku, row in rows.items():
         product = normalized_feed.get(sku)
         if product is None:
@@ -101,6 +103,21 @@ def plan_updates(conn: sqlite3.Connection, feed: dict[str, dict], taa_skus: set[
             distance, description = reviewed_distances[sku]
             if row["max_distance_m"] != distance or row["what_it_does"] != description:
                 spec_updates.append((row["inputs"], row["outputs"], distance, description, row["id"]))
+        if product and sku == "BG-4K-VP1616PRO":
+            description = "16x16 4K60 matrix with 16 mirrored CAT outputs and receiver extension up to 70m."
+            if row["max_distance_m"] != 70 or row["what_it_does"] != description:
+                spec_updates.append((16, 16, 70, description, row["id"]))
+        if product and sku == "BG-UDAIC-E14" and row["max_distance_m"] != 70:
+            spec_updates.append((row["inputs"], row["outputs"], 70, row["what_it_does"], row["id"]))
+        if product and sku in {"BG-UHD-VWP-1X4", "BG-UHD-VW2X2"}:
+            description = ("Video-wall processor: 4K60 HDMI/DisplayPort input, but outputs limited to 1080p60 / 1920x1200."
+                           if sku == "BG-UHD-VWP-1X4" else "Video-wall controller: 4K60 HDMI input and loop-out, but video-wall outputs limited to 1080p60.")
+            if row["what_it_does"] != description:
+                spec_updates.append((row["inputs"], row["outputs"], row["max_distance_m"], description, row["id"]))
+            if has_interfaces:
+                current = conn.execute("SELECT max_res, supports_4k, notes FROM product_interfaces WHERE sku=?", (row["id"],)).fetchone()
+                if current and tuple(current) != ("1080p60", 0, description):
+                    interface_updates.append(("1080p60", 0, description, row["id"]))
         if taa_skus is not None:
             confirmed = int(sku in taa_skus)
             if not has_taa or row["taa_compliant"] != confirmed:
@@ -118,6 +135,7 @@ def plan_updates(conn: sqlite3.Connection, feed: dict[str, dict], taa_skus: set[
         "spec_updates": spec_updates,
         "category_updates": category_updates,
         "taa_updates": taa_updates,
+        "interface_updates": interface_updates,
     }
 
 
@@ -139,7 +157,7 @@ def refresh(db_path: str, apply: bool = False, backup_dir: str | None = None) ->
                     shipping_updates.append((estimate, "BG-NUTRIX"))
             except Exception as exc:
                 logging.getLogger(__name__).warning("Could not verify BG-NUTRIX shipping badge: %s", exc)
-        if apply and (result["updates"] or result["spec_updates"] or result["category_updates"] or result["taa_updates"] or shipping_updates):
+        if apply and (result["updates"] or result["spec_updates"] or result["category_updates"] or result["taa_updates"] or result["interface_updates"] or shipping_updates):
             if not backup_dir:
                 raise ValueError("--backup-dir is required with --apply")
             target = Path(backup_dir)
@@ -163,12 +181,17 @@ def refresh(db_path: str, apply: bool = False, backup_dir: str | None = None) ->
             conn.executemany("UPDATE products SET category=? WHERE id=?", result["category_updates"])
             conn.executemany("UPDATE products SET taa_compliant=? WHERE id=?", result["taa_updates"])
             conn.executemany("UPDATE products SET shipping_estimate=? WHERE id=?", shipping_updates)
+            if result["interface_updates"]:
+                conn.executemany("UPDATE product_interfaces SET max_res=?, supports_4k=?, notes=? WHERE sku=?", result["interface_updates"])
+            for sku in {"BG-UHD-VWP-1X4", "BG-UHD-VW2X2"} & feed.keys():
+                conn.execute("UPDATE products SET resolutions=? WHERE id=?", (json.dumps(["1080p60 output", "4K60 input"]), sku))
             conn.commit()
             result["backup_path"] = str(backup_path)
         result.pop("updates")
         result.pop("spec_updates")
         result.pop("category_updates")
         result.pop("taa_updates")
+        result.pop("interface_updates")
         result["shipping_estimates"] = [sku for _, sku in shipping_updates]
         return result
     finally:

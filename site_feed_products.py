@@ -84,7 +84,7 @@ def parse_site_feed(data: bytes, skus: set[str] = REVIEWED_SITE_SKUS) -> dict[st
         if not link.startswith("https://bzbgear.com/product/"):
             raise ValueError(f"Unexpected product URL for {sku}: {link}")
         status = (item.findtext("status") or "").strip()
-        if status not in {"Available", "Pre-Order", "Out of Stock", "Discontinued"}:
+        if status not in {"Available", "In Stock", "Limited Stock", "Pre-Order", "Shipping Soon", "Backordered", "Out of Stock", "Discontinued"}:
             raise ValueError(f"Unknown full-feed status for {sku}: {status!r}")
         category_paths = [(node.text or "").strip() for node in item.findall("./categories/category")]
         features_html = html.fromstring("<div>" + (item.findtext("features") or "") + "</div>")

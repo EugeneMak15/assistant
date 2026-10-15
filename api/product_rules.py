@@ -60,6 +60,8 @@ def requested_ports(text: str) -> tuple[int | None, int | None]:
 
 def is_usb_matrix_request(text: str) -> bool:
     """USB peripheral routing, not HDMI/video matrix or KVM switching."""
+    if re.search(r"\bkeyboard\b", text, re.I) and re.search(r"\bmouse\b", text, re.I) and requested_kvm_hosts(text) and not re.search(r"\b(?:hdmi|video|display|monitor|screen|kvm)\b", text, re.I):
+        return True
     if not re.search(r"\busb(?:\s*3(?:\.2)?|\s*2)?\b", text, re.I):
         return False
     explicit_usb_only = bool(re.search(r"\busb[ -]?only\b|\bno\s+video\b", text, re.I))
@@ -98,6 +100,8 @@ def requested_wall_screens(text: str) -> int | None:
     if rows:
         return int(rows.group(1)) * int(rows.group(2))
     layout = re.search(r"\b(\d+)\s*[x×]\s*(\d+)\s+(?:video\s+)?wall\b", text, re.I)
+    if not layout and "wall" in text.lower() and "matrix" not in text.lower():
+        layout = re.search(r"\b(\d+)\s*[x×]\s*(\d+)\b", text, re.I)
     return int(layout.group(1)) * int(layout.group(2)) if layout else None
 
 
@@ -111,7 +115,7 @@ def mentioned_catalog_skus(conn, text: str) -> list[str]:
         "AND (stock_status IS NULL OR stock_status NOT IN ('Discontinued','Out of Stock','Not in Feed')) "
         "ORDER BY id"
     ):
-        if category == "accessory" and not accessory_request:
+        if (category == "accessory" or sku.endswith("-EXT")) and not accessory_request:
             continue
         parts = sku.upper().split("-")
         if len(parts) < 2:
@@ -175,8 +179,10 @@ def hard_mismatch(product: dict, interface: dict | None, text: str, categories: 
         return "medical-only camera outside a medical scenario"
     if ("audio converter" in cats or "audio extractor" in cats or "earc adapter" in cats) and product.get("category") != "audio":
         return "dedicated audio converter required"
-    if "ptz camera" in cats and product.get("category") != "camera":
+    if "camera" in cats and "bundle" not in cats and product.get("category") != "camera":
         return "standalone PTZ camera required"
+    if "videobar" in cats and "extension microphone" in name:
+        return "video bar required, not its microphone accessory"
     is_extender = product.get("category") == "extender" or "extender" in cats
     if is_extender:
         if re.search(r"\bwall[ -]?plate\b", text, re.I) and not (
@@ -241,6 +247,8 @@ def hard_mismatch(product: dict, interface: dict | None, text: str, categories: 
             return "eARC support required"
         if re.search(r"\b(?:av\s+)?receiver\b", text, re.I) and sku in {"BG-8K-AA", "BG-8K-SA"}:
             return "adapter is intended for an amplifier or soundbar, not an AV receiver"
+        if "soundbar" in text.lower() and sku == "BG-8K-AA":
+            return "HDMI soundbar output required"
 
     need_8k, need_4k120 = requested_video(text)
     need_4k = bool(re.search(r"\b4\s*k(?:\b|(?=\d))", text, re.I))
@@ -250,14 +258,15 @@ def hard_mismatch(product: dict, interface: dict | None, text: str, categories: 
             and not re.search(r"\b(?:input|loop.?out|pass.?through)\b", text, re.I)):
         if (interface.get("max_res") or "").upper() not in ({"8K60", "8K30"} if need_8k else {"4K120", "8K30", "8K60"}):
             return "capture output resolution is below the requested format"
-    video_device = not cats or any(term in cats for term in ("switch", "matrix", "splitter", "distribution", "camera", "encoder", "decoder", "extender", "av over ip", "generator", "tester"))
+    video_device = not cats or any(term in cats for term in ("switch", "matrix", "splitter", "distribution", "camera", "encoder", "decoder", "extender", "av over ip", "generator", "tester", "video wall", "videowall", "video processor"))
     if video_device and need_8k:
         evidence = name + " " + " ".join(_json_list(product.get("features"))).lower()
         if interface.get("supports_8k") != 1 or "8K" not in evidence.upper():
             return "8K required"
-    if video_device and need_4k and interface.get("supports_4k") != 1:
+    wall_input_only_alternative = ("video wall" in cats or "videowall" in cats) and sku in {"BG-UHD-VWP-1X4", "BG-UHD-VW2X2"} and not re.search(r"\b4k\s*(?:60\s*)?output|\bnative\s+4k\b", text, re.I)
+    if video_device and need_4k and interface.get("supports_4k") != 1 and not wall_input_only_alternative:
         return "4K required"
-    if video_device and need_4k60 and (interface.get("max_res") or "").upper() in {"1080P", "1080P60", "4K30"}:
+    if video_device and need_4k60 and (interface.get("max_res") or "").upper() in {"1080P", "1080P60", "4K30"} and not wall_input_only_alternative:
         return "4K60 required"
     if video_device and need_4k120:
         if (interface.get("max_res") or "").upper() in {"1080P", "1080P60", "4K30", "4K60"}:
@@ -297,6 +306,9 @@ def hard_mismatch(product: dict, interface: dict | None, text: str, categories: 
         if distance and (product.get("max_distance_m") or 0) < distance:
             return "insufficient extension distance"
     if "video wall" in cats or "videowall" in cats:
+        wall_evidence = " ".join((name, product.get("what_it_does") or "", " ".join(_json_list(product.get("features"))))).lower()
+        if not re.search(r"video[ -]?wall", wall_evidence):
+            return "video-wall image processing required"
         screens = requested_wall_screens(text)
         if screens and (interface.get("out_hdmi_count") or product.get("outputs") or 0) < screens:
             return "insufficient video-wall outputs"
@@ -330,10 +342,18 @@ def rank_product(product: dict, interface: dict | None, text: str) -> tuple:
     distance = requested_distance_m(text)
     requested_zoom = re.search(r"\b(\d{1,2})\s*x\s*(?:zoom)?\b", text, re.I)
     zoom_gap = 0
+    resolution_overkill = 0
+    movement_overkill = 0
+    if product.get("category") == "camera" and re.search(r"\b(?:fixed|static)\s+(?:camera|shots?)\b", text, re.I) and "ptz" not in text.lower():
+        movement_overkill = int(interface.get("primary_fn") == "camera-ptz")
+    if product.get("category") == "camera" and re.search(r"\b1080\s*p?\b", text, re.I) and not re.search(r"\b4\s*k\b", text, re.I):
+        resolution_overkill = int(bool(interface.get("supports_4k")))
     if (product.get("category") == "camera" or str(interface.get("primary_fn", "")).startswith("camera-")) and requested_zoom:
         optical = interface.get("zoom_optical") or 0
         zoom_gap = abs(optical - int(requested_zoom.group(1))) if optical else 999
     return (
+        movement_overkill,
+        resolution_overkill,
         zoom_gap,
         max(0, (interface.get("out_hdmi_count") or 0) - outputs) if outputs else 0,
         max(0, (interface.get("in_hdmi_count") or 0) - inputs) if inputs else 0,
