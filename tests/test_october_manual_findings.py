@@ -150,6 +150,13 @@ class OctoberManualFindings(unittest.TestCase):
         self.assertNotIn('Resolution?', result['_scenario_answers'])
         self.assertEqual(result['_scenario_plan']['requested_categories'], ['camera'])
 
+    def test_wireless_distribution_does_not_add_a_wired_splitter(self):
+        from api.product_rules import hard_mismatch
+        self.assertEqual(hard_mismatch({'id': 'BG-8K-DA14', 'name': '1x4 HDMI splitter',
+                                       'category': 'distribution_amp'}, {'primary_fn': 'splitter'},
+                                      'one source to four TVs wirelessly, 4K', ['splitter']),
+                         'wireless distribution required')
+
 
 if __name__ == '__main__':
     unittest.main()

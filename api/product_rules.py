@@ -194,6 +194,10 @@ def hard_mismatch(product: dict, interface: dict | None, text: str, categories: 
     if "videobar" in cats and "extension microphone" in name:
         return "video bar required, not its microphone accessory"
     is_extender = product.get("category") == "extender" or "extender" in cats
+    if "wireless" in text.lower() and (is_extender or "splitter" in cats or "distribution amp" in cats):
+        wireless_evidence = " ".join((name, product.get("what_it_does") or "", " ".join(_json_list(product.get("features"))))).lower()
+        if "wireless" not in wireless_evidence and not sku.startswith("BG-AIR4KAST"):
+            return "wireless distribution required"
     if is_extender:
         if re.search(r"\bwall[ -]?plate\b", text, re.I) and not (
             "wall plate" in name or interface.get("form_factor") == "wall plate"
