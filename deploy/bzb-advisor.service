@@ -1,0 +1,21 @@
+[Unit]
+Description=BZBGEAR Advisor API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=advisor
+Group=advisor
+WorkingDirectory=/opt/assistant
+EnvironmentFile=/opt/assistant/.env
+ExecStart=/opt/assistant/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8001 --proxy-headers --forwarded-allow-ips=127.0.0.1
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/assistant
+
+[Install]
+WantedBy=multi-user.target
