@@ -1,9 +1,11 @@
 """Copy a consistent production Advisor snapshot to bzb-web01 over two SSH links.
 
-The original service remains running. Re-run immediately before DNS cutover to
-capture conversations created since the first copy. No password is stored.
+The original service remains running. Use --final-merge after routing old-VPS
+traffic to the new VPS; it preserves conversations created on both servers.
+No password is stored.
 """
 
+import argparse
 import getpass
 import os
 import subprocess
@@ -48,6 +50,9 @@ def pipe_archive(client, source_command, target_command):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--final-merge", action="store_true")
+    args = parser.parse_args()
     password = os.environ.get("ADVISOR_SOURCE_PASSWORD") or getpass.getpass("Current Advisor root SSH password: ")
     client = paramiko.SSHClient()
     client.load_host_keys(OLD_KNOWN_HOSTS)
@@ -56,10 +61,18 @@ def main():
                    look_for_keys=False, allow_agent=False)
     try:
         remote_command(client, "cd /opt/assistant && /opt/assistant/venv/bin/python -c 'import sqlite3; a=sqlite3.connect(\"products.db\"); b=sqlite3.connect(\"_migration_products.db\"); a.backup(b); b.close(); a.close()'")
+        if args.final_merge:
+            remote_command(client, "cd /opt/assistant && /opt/assistant/venv/bin/python -c 'import sqlite3; a=sqlite3.connect(\"debug_annotations.db\"); b=sqlite3.connect(\"_migration_annotations.db\"); a.backup(b); b.close(); a.close()'")
+            pipe_archive(
+                client,
+                "cd /opt/assistant && tar -cf - _migration_products.db _migration_annotations.db",
+                "sudo -n mkdir -p /opt/assistant/_migration_stage && sudo -n tar -xf - -C /opt/assistant/_migration_stage && sudo -n chown -R advisor:advisor /opt/assistant/_migration_stage && sudo -n -u advisor /opt/assistant/venv/bin/python /opt/assistant/deploy/merge_migration_db.py",
+            )
+            return
         pipe_archive(
             client,
             "cd /opt/assistant && tar -cf - _migration_products.db chroma_db debug_annotations.db .env",
-            "sudo -n tar -xf - -C /opt/assistant && sudo -n mv /opt/assistant/_migration_products.db /opt/assistant/products.db && sudo -n chown advisor:advisor /opt/assistant/products.db /opt/assistant/debug_annotations.db /opt/assistant/.env && sudo -n chown -R advisor:advisor /opt/assistant/chroma_db && sudo -n chmod 600 /opt/assistant/.env",
+            "! sudo -n grep -q '^ADVISOR_ADMIN_PASSWORD=' /opt/assistant/.env && sudo -n tar -xf - -C /opt/assistant && sudo -n mv /opt/assistant/_migration_products.db /opt/assistant/products.db && sudo -n chown advisor:advisor /opt/assistant/products.db /opt/assistant/debug_annotations.db /opt/assistant/.env && sudo -n chown -R advisor:advisor /opt/assistant/chroma_db && sudo -n chmod 600 /opt/assistant/.env",
         )
         pipe_archive(
             client,
