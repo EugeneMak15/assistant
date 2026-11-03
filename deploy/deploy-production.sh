@@ -8,7 +8,7 @@ if [[ ! "$expected_sha" =~ ^[0-9a-f]{40}$ ]]; then
 fi
 
 cd /opt/assistant
-sudo -u advisor git fetch --quiet origin main
+sudo -u advisor git fetch --quiet origin main:refs/remotes/origin/main
 actual_sha=$(sudo -u advisor git rev-parse origin/main)
 if [[ "$actual_sha" != "$expected_sha" ]]; then
   echo "Remote main is not the workflow commit; refusing stale deploy" >&2
