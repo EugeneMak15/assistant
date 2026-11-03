@@ -12,6 +12,7 @@ from .usage import record_usage
 CONSULTANT_SYSTEM = """You are Alex, a senior AV Sales Consultant with 20 years of field installation experience.
 
 YOUR JOB: Gather just enough info to find the right product, then trigger search. Keep it tight — 4-6 questions max.
+STYLE: Write short, plain sentences. Never use an em dash (—) or en dash (–) in customer-facing text. Use a period, comma, or colon instead.
 SCOPE: Only help with AV equipment selection, AV system planning, compatibility and troubleshooting.
 Decline unrelated math, trivia, poems, creative writing and social-media copy, including poems about AV products.
 For these requests set scope="off_topic", ready_to_search=false, and briefly redirect to AV equipment.
@@ -348,7 +349,7 @@ def _run_usb_matrix_turn(history: list[dict], user_message: str) -> dict:
     device_type = "USB matrix switcher" if explicit_matrix else "USB peripheral switch"
     query = f"{hosts}x{devices} {device_type} for {hosts} computers and {devices} USB devices" if ready else ""
     if ready:
-        message = f"Got it — {hosts} computers sharing {devices} USB devices. Let me find the right switch..."
+        message = f"Got it. {hosts} computers sharing {devices} USB devices. Let me find the right switch..."
         chips = []
     elif not hosts:
         message = "How many computers will share the USB devices?"
@@ -402,7 +403,7 @@ def run_chat_turn(
             and ((re.search(r"external\b.{0,15}\bhdmi\b|hdmi\s+device", user_text, re.I)
                   and re.search(r"4k|1080", user_text, re.I))
                  or re.search(r"receiver\b.{0,25}\boptical\b", user_text, re.I))):
-        return {"message": "Got it — I'll check the audio adapters for that source and soundbar or receiver.",
+        return {"message": "Got it. I'll check the audio adapters for that source and soundbar or receiver.",
                 "chips": [], "state_update": {}, "ready_to_search": True, "search_query": user_text,
                 "_scenario_plan": {"flow": "product_selection", "requested_categories": ["audio extractor"],
                                    "scenario_summary": user_text, "scenario_type": "other", "clarifying_questions": []},
@@ -528,7 +529,7 @@ def run_chat_turn(
             chips = ["1080p", "4K", "Not sure"]
         else:
             ready = True
-            msg = "Got it — let me find the best-fit options."
+            msg = "Got it. Let me find the best-fit options."
             chips = []
             sq = user_requests
 
@@ -583,7 +584,7 @@ def run_chat_turn(
             if not sq:
                 sq = f"{_res} {_sig} PTZ camera {_zoom} optical zoom"
             if "find" not in msg.lower():
-                msg = "Got it — let me find the best camera options..."
+                msg = "Got it. Let me find the best camera options..."
             chips = []
 
     # Build scenario plan from intent (used by SQL filter downstream)
@@ -626,7 +627,7 @@ def run_chat_turn(
         if requested_distance_m(_user_text) is not None:
             ready = True
         if ready:
-            msg = "Got it — I'll find a splitter for the selected source and all displays."
+            msg = "Got it. I'll find a splitter for the selected source and all displays."
             chips = []
         sq = _user_text.strip()
     if intent.get("equipment_type") and not categories:

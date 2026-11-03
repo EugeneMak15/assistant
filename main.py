@@ -15,7 +15,7 @@ truststore.inject_into_ssl()
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 
 from api.models import SessionState, SessionUpdate, Product, RecommendRequest, RecommendResponse
@@ -312,6 +312,16 @@ class ChatResponse(BaseModel):
     required_roles: list[dict] = []
     solution_approaches: list[SolutionApproach] = []
     suggest_new_chat: bool = False
+
+    @field_validator("message", "recommendation")
+    @classmethod
+    def no_long_dash_in_text(cls, value):
+        return value.replace("—", " - ").replace("–", "-") if value else value
+
+    @field_validator("chips")
+    @classmethod
+    def no_long_dash_in_chips(cls, value):
+        return [chip.replace("—", " - ").replace("–", "-") for chip in value]
 
 
 class ChatStartRequest(BaseModel):
@@ -807,7 +817,7 @@ def stream_recommendation_sse(session_id: str):
                 session=session_dict,
                 candidate_skus=sql_skus,
             )
-            answer = eng["answer"]
+            answer = eng["answer"].replace("—", " - ").replace("–", "-")
             print(f"[SSE Flow B] answer length={len(answer)}, selected_skus={eng.get('selected_skus')}")
             # Emit product cards for any BZB Gear SKU mentioned in the answer
             seen: set[str] = set()
@@ -835,7 +845,7 @@ def stream_recommendation_sse(session_id: str):
             for ev in gen:
                 event_type = ev[0]
                 if event_type == "text":
-                    data = ev[1]
+                    data = ev[1].replace("—", " - ").replace("–", "-")
                     full_text.append(data)
                     yield f"data: {_json.dumps({'type': 'text', 'chunk': data})}\n\n"
 

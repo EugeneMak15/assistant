@@ -1183,6 +1183,7 @@ const _msgComments = {};   // { msgIdx: "comment text" }
 const _msgTexts   = {};    // { msgIdx: {role, text} } for saving history
 
 function addMessage(text, role = 'bot') {
+  if (role === 'bot') text = text.replace(/—/g, ' - ').replace(/–/g, '-');
   const chat = document.getElementById('chat');
   const div = document.createElement('div');
   div.className = `msg ${role}`;
