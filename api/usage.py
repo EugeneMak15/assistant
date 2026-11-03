@@ -94,6 +94,8 @@ def record_usage(response) -> None:
             conn.commit()
         finally:
             conn.close()
+        from .launch_controls import check_daily_budget
+        check_daily_budget()
     except Exception:
         logging.getLogger(__name__).exception("Could not record OpenAI usage for session %s", sid)
 

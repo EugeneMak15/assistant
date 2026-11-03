@@ -687,6 +687,13 @@
 
   /* ── Selection ── */
   ::selection { background: rgba(37,99,235,0.15); }
+  body:not(.admin-mode) .header-badge,
+  body:not(.admin-mode) #session-badge,
+  body:not(.admin-mode) #session-cost,
+  body:not(.admin-mode) .admin-only,
+  body:not(.admin-mode) #debug-bar,
+  body:not(.admin-mode) .msg-annotation,
+  body:not(.admin-mode) .msg-annotate-btn { display: none !important; }
 </style>
 </head>
 <body>
@@ -702,14 +709,15 @@
   <div id="session-cost" title="Estimated OpenAI API cost for this session, based on reported token usage; not an invoice.">
     <span>Session ≈</span><span id="session-cost-value">$0.00000</span>
   </div>
-  <button class="debug-btn" onclick="openSessionsPanel()">Sessions</button>
+  <button class="debug-btn admin-only" onclick="openSessionsPanel()">Sessions</button>
   <button id="new-chat" onclick="resetChat()">+ New chat</button>
 </header>
 
 <!-- Sessions panel -->
 <div id="sessions-panel">
   <div id="sessions-panel-header">
-    <h2>Annotated sessions</h2>
+    <h2>All sessions</h2>
+    <button class="debug-btn" onclick="loadAnnotationsList()">Annotations</button>
     <button id="sessions-close" onclick="closeSessionsPanel()">✕</button>
   </div>
   <div id="sessions-list-view">
@@ -747,6 +755,8 @@
 
 <script>
 const API = '';
+const ADMIN_MODE = location.pathname === '/admin';
+if (ADMIN_MODE) document.body.classList.add('admin-mode');
 const ACTIVE_CHAT_KEY = 'bzb-advisor-active-session';
 let sessionId = null;
 let chatBusy = false;
@@ -761,6 +771,7 @@ let lastRecommendationText = null;
 let costRefreshTimer = null;
 
 async function refreshSessionCost() {
+  if (!ADMIN_MODE) return;
   const sid = sessionId;
   if (!sid) return;
   try {
@@ -778,6 +789,7 @@ async function refreshSessionCost() {
 }
 
 function startCostPolling() {
+  if (!ADMIN_MODE) return;
   if (costRefreshTimer) clearInterval(costRefreshTimer);
   refreshSessionCost();
   costRefreshTimer = setInterval(refreshSessionCost, 1500);
@@ -786,7 +798,7 @@ function startCostPolling() {
 function stopCostPolling(refresh = true) {
   if (costRefreshTimer) clearInterval(costRefreshTimer);
   costRefreshTimer = null;
-  if (refresh) refreshSessionCost();
+  if (refresh && ADMIN_MODE) refreshSessionCost();
 }
 
 // Keep the newest message and streamed search results in view.
@@ -973,14 +985,19 @@ async function renderMermaid(mermaidCode, container) {
 }
 
 // ─── Load diagram from API ─────────────────────────────────────────────────
-async function loadDiagram(recText, container) {
+async function loadDiagram(recText, container, userMessage = null) {
   container.innerHTML = '<div class="diagram-loading">Generating connection diagram</div>';
   try {
     const res = await fetch(`${API}/diagram`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recommendation: recText, session_id: sessionId }),
+      body: JSON.stringify({ recommendation: recText, session_id: sessionId, user_message: userMessage }),
     });
+    if (res.status === 429) {
+      container.textContent = 'The daily request limit has been reached. Please try again tomorrow.';
+      return;
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
     if (!data.nodes || !data.nodes.length) {
@@ -1263,40 +1280,103 @@ function showSessionsList() {
 async function loadSessionsList() {
   showSessionsList();
   const el = document.getElementById('sessions-list');
-  el.innerHTML = '<p style="color:var(--text-3);font-size:13px;padding:8px">Loading...</p>';
+  el.replaceChildren();
+  await loadMoreSessions(0);
+}
+
+async function loadMoreSessions(offset) {
+  const el = document.getElementById('sessions-list');
   try {
-    const r = await fetch(`${API}/debug/annotations`);
-    const items = await r.json();
-    if (!items.length) {
-      el.innerHTML = '<p style="color:var(--text-3);font-size:13px;padding:8px">No saved sessions yet.</p>';
-      return;
-    }
-    el.innerHTML = '';
-    items.forEach(s => {
-      const d = document.createElement('div');
-      d.className = 'session-item';
-      const date = new Date(s.saved_at + 'Z').toLocaleString();
-      d.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
-          <div>
-            <div class="session-item-id">${s.session_id}</div>
-            <div class="session-item-date">${date}</div>
-          </div>
-          <button class="debug-btn" style="flex-shrink:0;font-size:11px;padding:3px 8px" data-del="${s.id}" title="Delete">✕</button>
-        </div>
-        ${s.session_comment ? `<div class="session-item-comment">${s.session_comment}</div>` : ''}`;
-      d.querySelector('[data-del]').onclick = async e => {
-        e.stopPropagation();
-        if (!confirm('Delete this annotation?')) return;
-        await fetch(`${API}/debug/annotations/${s.id}`, { method: 'DELETE' });
-        loadSessionsList();
-      };
-      d.onclick = () => { closeSessionsPanel(); openSessionInChat(s.id); };
-      el.appendChild(d);
+    const all = await fetch(`${API}/admin/sessions?limit=100&offset=${offset}`);
+    if (!all.ok) throw new Error(`HTTP ${all.status}`);
+    const sessions = await all.json();
+    if (!sessions.length && !offset) { el.textContent = 'No sessions yet.'; return; }
+    sessions.forEach(s => {
+      const item = document.createElement('button');
+      item.className = 'session-item';
+      item.style.cssText = 'display:block;width:100%;text-align:left;border:0;cursor:pointer';
+      item.textContent = `${s.session_id} · ${new Date(s.updated_at * 1000).toLocaleString()} · ${s.turns} turns · $${Number(s.cost || 0).toFixed(5)}`;
+      item.onclick = () => showAdminSession(s.session_id);
+      el.appendChild(item);
     });
+    if (sessions.length === 100) {
+      const more = document.createElement('button');
+      more.className = 'debug-btn';
+      more.textContent = 'Load more sessions';
+      more.onclick = () => { more.remove(); loadMoreSessions(offset + 100); };
+      el.appendChild(more);
+    }
+    return;
   } catch(e) {
     el.innerHTML = `<p style="color:red;font-size:13px;padding:8px">Error: ${e.message}</p>`;
   }
+}
+
+async function loadAnnotationsList() {
+  showSessionsList();
+  const el = document.getElementById('sessions-list');
+  el.replaceChildren();
+  const response = await fetch(`${API}/debug/annotations`);
+  if (!response.ok) { el.textContent = 'Could not load annotations.'; return; }
+  const items = await response.json();
+  if (!items.length) { el.textContent = 'No saved annotations yet.'; return; }
+  items.forEach(item => {
+    const row = document.createElement('button');
+    row.className = 'session-item';
+    row.style.cssText = 'display:block;width:100%;text-align:left;border:0;cursor:pointer';
+    row.textContent = `${item.session_id} · ${item.saved_at} · ${item.session_comment || ''}`;
+    row.onclick = () => showSessionDetail(item.id);
+    el.appendChild(row);
+  });
+}
+
+async function showAdminSession(sid) {
+  const r = await fetch(`${API}/admin/sessions/${encodeURIComponent(sid)}`);
+  if (!r.ok) return;
+  const data = await r.json();
+  document.getElementById('sessions-list-view').style.display = 'none';
+  const panel = document.getElementById('session-detail');
+  panel.classList.add('open');
+  const body = document.getElementById('session-detail-body');
+  body.replaceChildren();
+  const title = document.createElement('h3');
+  title.textContent = `${sid} · estimated $${Number(data.usage?.estimated_cost_usd || 0).toFixed(5)}`;
+  body.appendChild(title);
+  const results = [...(data.results || [])].sort((a,b) => (a.history_index || 0) - (b.history_index || 0));
+  let resultIndex = 0;
+  const add = (label, value) => {
+    const box = document.createElement('div');
+    box.className = 'session-item';
+    const strong = document.createElement('strong');
+    strong.textContent = label;
+    const content = document.createElement('div');
+    content.style.whiteSpace = 'pre-wrap';
+    content.textContent = value;
+    box.append(strong, content);
+    body.appendChild(box);
+  };
+  for (let i = 0; i <= (data.history || []).length; i++) {
+    while (resultIndex < results.length && (results[resultIndex].history_index || 0) <= i) {
+      const rec = results[resultIndex++];
+      add('Recommended: ' + (rec.skus || []).join(', '), rec.rec_text || '');
+    }
+    if (i < data.history.length) add(data.history[i].role === 'user' ? 'Visitor' : 'Advisor', data.history[i].content || '');
+  }
+  const note = document.createElement('textarea');
+  note.placeholder = 'Internal comment on this session';
+  note.style.cssText = 'width:100%;min-height:70px;margin-top:12px';
+  const save = document.createElement('button');
+  save.className = 'debug-btn primary';
+  save.textContent = 'Save comment';
+  save.onclick = async () => {
+    const response = await fetch(`${API}/debug/save-comments`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({session_id:sid, session_comment:note.value,
+        history:data.history || [], products_shown:(data.results || []).flatMap(r => r.skus || [])})
+    });
+    save.textContent = response.ok ? 'Saved' : 'Save failed';
+  };
+  body.append(note, save);
 }
 
 // ─── Open session in main chat ──────────────────────────────────────────────
@@ -1800,7 +1880,7 @@ async function sendMessage() {
     chat.scrollTop = chat.scrollHeight;
 
     try {
-      await loadDiagram(lastRecommendationText, diagContainer);
+      await loadDiagram(lastRecommendationText, diagContainer, text);
       chat.scrollTop = chat.scrollHeight;
     } finally {
       setChatBusy(false);
@@ -1827,6 +1907,8 @@ async function sendMessage() {
       hideTyping();
       addMessage(res.status === 404
         ? 'This session is unavailable. Please start a new chat.'
+        : res.status === 429
+          ? 'The daily request limit for this connection has been reached. Please try again tomorrow.'
         : 'I could not process that message. Your chat is still here — please try again.', 'bot');
     } else {
       const data = await res.json();
@@ -2161,6 +2243,11 @@ async function init(silent = false) {
       }
     }
     const res = await fetch(`${API}/chat/start`, { method: 'POST' });
+    if (res.status === 429) {
+      if (!silent) addMessage('The daily request limit for this connection has been reached. Please try again tomorrow.', 'bot');
+      return false;
+    }
+    if (!res.ok) throw new Error(`Chat start failed: ${res.status}`);
     const data = await res.json();
     sessionId = data.session?.session_id;
     try { if (sessionId) localStorage.setItem(ACTIVE_CHAT_KEY, sessionId); } catch (_) {}

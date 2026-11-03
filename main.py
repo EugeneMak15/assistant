@@ -11,7 +11,7 @@ load_dotenv()
 import truststore
 truststore.inject_into_ssl()
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
@@ -29,9 +29,11 @@ from api.db import (get_conn, row_to_dict, init_chat_state_table, save_chat_stat
                     load_chat_state, save_chat_result, load_chat_results,
                     save_session_fields, load_session_fields)
 from api.usage import init_usage_table, track_session, get_session_usage
+from api.launch_controls import init_launch_tables, is_admin, admin_challenge, enforce_daily_limit
 
 init_chat_state_table()
 init_usage_table()
+init_launch_tables()
 
 app = FastAPI(
     title="BZB Gear AI Equipment Advisor",
@@ -47,10 +49,33 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def launch_access(request: Request, call_next):
+    path = request.url.path
+    private = (path == "/admin" or path.startswith("/debug/") or path.startswith("/admin/")
+               or path.startswith("/chat/usage/") or path in ("/docs", "/redoc", "/openapi.json", "/stats", "/session", "/recommend", "/candidates", "/chunks")
+               or path.startswith("/session/"))
+    if private:
+        if not is_admin(request):
+            return admin_challenge()
+    metered = ((path in ("/chat/start", "/chat/message", "/diagram") and request.method == "POST")
+               or (path.startswith("/chat/stream/") and request.method == "GET"))
+    if metered and not is_admin(request):
+        limited = enforce_daily_limit(request)
+        if limited:
+            return limited
+    return await call_next(request)
+
+
 # ─── UI ───────────────────────────────────────────────────────────────────────
 
 @app.get("/", include_in_schema=False)
 def serve_ui():
+    return FileResponse("chat.html", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
+
+@app.get("/admin", include_in_schema=False)
+def serve_admin():
     return FileResponse("chat.html", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
 
@@ -71,6 +96,9 @@ def health():
         "products_in_db": product_count,
         "manual_chunks_indexed": chunk_count,
         "openai_key_set": bool(os.environ.get("OPENAI_API_KEY")),
+        "admin_password_set": bool(os.environ.get("ADVISOR_ADMIN_PASSWORD")),
+        "alert_smtp_set": all(os.environ.get(k) for k in
+                              ("ALERT_SMTP_HOST", "ALERT_SMTP_USER", "ALERT_SMTP_PASSWORD", "ALERT_SMTP_FROM")),
     }
 
 
@@ -558,6 +586,36 @@ def debug_session(session_id: str):
     }
 
 
+@app.get("/admin/sessions", tags=["Admin"])
+def admin_sessions(limit: int = 100, offset: int = 0):
+    """All persisted conversations, newest first, including unannotated ones."""
+    conn = get_conn()
+    try:
+        rows = conn.execute("""SELECT s.session_id, s.updated_at,
+            json_array_length(COALESCE(s.history_json, '[]')) AS turns,
+            (SELECT COUNT(*) FROM chat_results r WHERE r.session_id=s.session_id) AS has_results,
+            (SELECT COALESCE(SUM(estimated_cost_usd),0) FROM chat_usage u WHERE u.session_id=s.session_id) AS cost
+            FROM chat_state s ORDER BY s.updated_at DESC LIMIT ? OFFSET ?""",
+            (max(1, min(limit, 200)), max(offset, 0))).fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        conn.close()
+
+
+@app.get("/admin/sessions/{session_id}", tags=["Admin"])
+def admin_session_detail(session_id: str):
+    conn = get_conn()
+    try:
+        exists = conn.execute("SELECT 1 FROM chat_state WHERE session_id=?", (session_id,)).fetchone()
+    finally:
+        conn.close()
+    if not exists:
+        raise HTTPException(404, "Session not found")
+    scenario, history = load_chat_state(session_id)
+    return {"session_id": session_id, "history": history, "results": load_chat_results(session_id),
+            "session": load_session_fields(session_id), "usage": get_session_usage(session_id)}
+
+
 # ─── Debug annotations ────────────────────────────────────────────────────────
 
 import sqlite3 as _sqlite3
@@ -797,6 +855,9 @@ def stream_recommendation_sse(session_id: str):
             print(f"[SSE ERROR] {exc}\n{traceback.format_exc()}")
             _save_followup()
             yield f"data: {_json.dumps({'type': 'done'})}\n\n"
+        finally:
+            # Preserve even partial recommendations if a visitor closes the tab.
+            _save_followup()
 
     return StreamingResponse(
         generate(),
@@ -833,6 +894,7 @@ def export_pdf(session_id: str):
 class DiagramRequest(BaseModel):
     recommendation: str
     session_id: Optional[str] = None
+    user_message: Optional[str] = None
 
 
 @app.post("/diagram", tags=["Chat"])
@@ -842,7 +904,15 @@ def generate_diagram_endpoint(body: DiagramRequest):
         raise HTTPException(400, "OPENAI_API_KEY not set")
     from api.diagram import extract_diagram
     with track_session(body.session_id):
-        return extract_diagram(body.recommendation)
+        diagram = extract_diagram(body.recommendation)
+    if body.session_id and body.user_message:
+        scenario, history = load_chat_state(body.session_id)
+        if history or get_session(body.session_id):
+            history.extend([{"role": "user", "content": body.user_message},
+                            {"role": "assistant", "content": "Here is the connection diagram for the recommended system."}])
+            save_chat_state(body.session_id, scenario, history)
+            _chat_histories[body.session_id] = history
+    return diagram
 
 
 # ─── DB stats ─────────────────────────────────────────────────────────────────
