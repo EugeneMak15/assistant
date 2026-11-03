@@ -14,7 +14,11 @@ if [[ "$actual_sha" != "$expected_sha" ]]; then
   echo "Remote main is not the workflow commit; refusing stale deploy" >&2
   exit 1
 fi
-sudo -u advisor git switch main
+if sudo -u advisor git show-ref --verify --quiet refs/heads/main; then
+  sudo -u advisor git switch main
+else
+  sudo -u advisor git switch --create main origin/main
+fi
 sudo -u advisor git merge --ff-only origin/main
 sudo -u advisor /opt/assistant/venv/bin/pip install -q -r requirements.txt
 systemctl restart bzb-advisor.service
