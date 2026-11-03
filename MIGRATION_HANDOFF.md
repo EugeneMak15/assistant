@@ -1,0 +1,13 @@
+# Advisor launch / VPS migration handoff
+
+Status: deployed 2026-11-03 on the BZBGEAR web VPS, public DNS switched.
+
+- Public URL: https://assistant.bzbgear.com/ (Cloudflare DNS-only A record `15.204.65.182`). Public `/` returns 200 without Basic Auth; `/admin` returns 401 until its separate credentials are supplied.
+- Host: `bzb-web01` via `C:/Users/eugen/.ssh/bzb_ovh_config`; app in `/opt/assistant`, systemd unit `bzb-advisor.service`, Uvicorn loopback port 8001, Nginx TLS with Let's Encrypt certificate. Code deploy branch: `codex/launch-prep` in `EugeneMak15/assistant`, commit `c3f20ae` or later. `main` and its legacy GitHub Action still target the old VPS; do not assume pushing `main` deploys here.
+- Admin: browse `/admin`, username `admin`; dedicated generated password is `ADVISOR_ADMIN_PASSWORD` in `/opt/assistant/.env` (mode 600). Public UI hides debug controls; admin UI lists persisted chats, recommendations, comments, cost and a visitor filter. Browser-local anonymous UUID links new chats from the same browser. Old migrated sessions have no visitor UUID. This is not an identity or cross-device identifier.
+- Data: copied old SQLite and Chroma data; legacy sessions merged after DNS cutover. Avoid running the initial migration mode again, because it overwrites the new environment. Backups and rollback scripts are under `deploy/`.
+- Old VPS `209.159.152.124` is temporarily a TLS reverse proxy to the new VPS for stale DNS caches. Its old app remains running for rollback. Old Nginx backup timestamp is `20261103T180400Z` in `/etc/nginx/fastpanel2-sites/xlink_one_bz_usr/`.
+- Daily rate limit: 100 public API requests per IP, UTC day; request 101 gets 429. Estimated OpenAI cost alert threshold: >$10 UTC day. SMTP is **not configured yet** (`alert_smtp_set=false` in `/health`), so email alerts do not send. Set `ALERT_SMTP_HOST`, `ALERT_SMTP_PORT`, `ALERT_SMTP_USER`, `ALERT_SMTP_PASSWORD`, `ALERT_SMTP_FROM` in `/opt/assistant/.env`, then restart and test an alert before relying on it. Destination is `eugene.m@bzbgear.com`.
+- Website CTAs: homepage Elementor page 28 and internal theme configurator CTA URLs point to Advisor. A stale Elementor element cache was invalidated. Backups: `/var/www/bzbprod/data/www/bzbgear.com/wp-content/themes/bzbgear/.codex-backups/advisor-links-20261103T180553Z`.
+
+Verification: 82 local unit tests pass; live HTTPS 200 and certificate valid; `/admin` 401 unauthenticated and 200 with admin credentials; two public chat starts with the same UUID created two rows in `chat_visitors`; homepage and `/partnerships/` link to Advisor. The real email alert flow still needs SMTP setup and a send test.
