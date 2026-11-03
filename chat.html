@@ -758,6 +758,14 @@ const API = '';
 const ADMIN_MODE = location.pathname === '/admin';
 if (ADMIN_MODE) document.body.classList.add('admin-mode');
 const ACTIVE_CHAT_KEY = 'bzb-advisor-active-session';
+const VISITOR_KEY = 'bzb-advisor-visitor-id';
+function visitorId() {
+  try {
+    let id = localStorage.getItem(VISITOR_KEY);
+    if (!id) { id = crypto.randomUUID(); localStorage.setItem(VISITOR_KEY, id); }
+    return id;
+  } catch (_) { return null; }
+}
 let sessionId = null;
 let chatBusy = false;
 
@@ -1287,7 +1295,8 @@ async function loadSessionsList() {
 async function loadMoreSessions(offset) {
   const el = document.getElementById('sessions-list');
   try {
-    const all = await fetch(`${API}/admin/sessions?limit=100&offset=${offset}`);
+    const filter = new URLSearchParams(location.search).get('visitor_id');
+    const all = await fetch(`${API}/admin/sessions?limit=100&offset=${offset}${filter ? `&visitor_id=${encodeURIComponent(filter)}` : ''}`);
     if (!all.ok) throw new Error(`HTTP ${all.status}`);
     const sessions = await all.json();
     if (!sessions.length && !offset) { el.textContent = 'No sessions yet.'; return; }
@@ -1295,7 +1304,7 @@ async function loadMoreSessions(offset) {
       const item = document.createElement('button');
       item.className = 'session-item';
       item.style.cssText = 'display:block;width:100%;text-align:left;border:0;cursor:pointer';
-      item.textContent = `${s.session_id} · ${new Date(s.updated_at * 1000).toLocaleString()} · ${s.turns} turns · $${Number(s.cost || 0).toFixed(5)}`;
+      item.textContent = `${s.session_id} · ${new Date(s.updated_at * 1000).toLocaleString()} · ${s.turns} turns · $${Number(s.cost || 0).toFixed(5)}${s.visitor_id ? ` · visitor ${s.visitor_id.slice(0, 8)}` : ''}`;
       item.onclick = () => showAdminSession(s.session_id);
       el.appendChild(item);
     });
@@ -1342,6 +1351,12 @@ async function showAdminSession(sid) {
   const title = document.createElement('h3');
   title.textContent = `${sid} · estimated $${Number(data.usage?.estimated_cost_usd || 0).toFixed(5)}`;
   body.appendChild(title);
+  if (data.visitor?.visitor_id) {
+    const link = document.createElement('a');
+    link.href = `/admin?visitor_id=${encodeURIComponent(data.visitor.visitor_id)}`;
+    link.textContent = `All sessions from this browser (${data.visitor.visitor_id})`;
+    body.appendChild(link);
+  }
   const results = [...(data.results || [])].sort((a,b) => (a.history_index || 0) - (b.history_index || 0));
   let resultIndex = 0;
   const add = (label, value) => {
@@ -2242,7 +2257,10 @@ async function init(silent = false) {
         try { localStorage.removeItem(ACTIVE_CHAT_KEY); } catch (_) {}
       }
     }
-    const res = await fetch(`${API}/chat/start`, { method: 'POST' });
+    const res = await fetch(`${API}/chat/start`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visitor_id: visitorId() })
+    });
     if (res.status === 429) {
       if (!silent) addMessage('The daily request limit for this connection has been reached. Please try again tomorrow.', 'bot');
       return false;

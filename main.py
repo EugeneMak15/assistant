@@ -5,6 +5,7 @@ Docs: http://localhost:8000/docs
 """
 import os
 import threading
+import uuid
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -27,9 +28,9 @@ from api.chat import run_chat_turn, get_opening_message
 from api.chain import build_chain, chain_to_text
 from api.db import (get_conn, row_to_dict, init_chat_state_table, save_chat_state,
                     load_chat_state, save_chat_result, load_chat_results,
-                    save_session_fields, load_session_fields)
+                    save_session_fields, load_session_fields, save_chat_visitor)
 from api.usage import init_usage_table, track_session, get_session_usage
-from api.launch_controls import init_launch_tables, is_admin, admin_challenge, enforce_daily_limit
+from api.launch_controls import init_launch_tables, is_admin, admin_challenge, enforce_daily_limit, client_ip
 
 init_chat_state_table()
 init_usage_table()
@@ -313,14 +314,25 @@ class ChatResponse(BaseModel):
     suggest_new_chat: bool = False
 
 
+class ChatStartRequest(BaseModel):
+    visitor_id: Optional[str] = None
+
+
 @app.post("/chat/start", response_model=ChatResponse, tags=["Chat"])
-def chat_start():
+def chat_start(request: Request, body: Optional[ChatStartRequest] = None):
     """Create a new session and return the opening message with chips."""
     session = create_session()
     _chat_histories[session.session_id] = []
     _scenario_state[session.session_id] = {}
     save_chat_state(session.session_id, {}, [])
     save_session_fields(session.session_id, session.model_dump())
+    visitor_id = None
+    if body and body.visitor_id:
+        try:
+            visitor_id = str(uuid.UUID(body.visitor_id))
+        except ValueError:
+            pass
+    save_chat_visitor(session.session_id, visitor_id, client_ip(request))
     opening = get_opening_message()
     return ChatResponse(
         message=opening["message"],
@@ -587,16 +599,18 @@ def debug_session(session_id: str):
 
 
 @app.get("/admin/sessions", tags=["Admin"])
-def admin_sessions(limit: int = 100, offset: int = 0):
+def admin_sessions(limit: int = 100, offset: int = 0, visitor_id: Optional[str] = None):
     """All persisted conversations, newest first, including unannotated ones."""
     conn = get_conn()
     try:
-        rows = conn.execute("""SELECT s.session_id, s.updated_at,
+        rows = conn.execute("""SELECT s.session_id, s.updated_at, v.visitor_id, v.ip_address,
             json_array_length(COALESCE(s.history_json, '[]')) AS turns,
             (SELECT COUNT(*) FROM chat_results r WHERE r.session_id=s.session_id) AS has_results,
             (SELECT COALESCE(SUM(estimated_cost_usd),0) FROM chat_usage u WHERE u.session_id=s.session_id) AS cost
-            FROM chat_state s ORDER BY s.updated_at DESC LIMIT ? OFFSET ?""",
-            (max(1, min(limit, 200)), max(offset, 0))).fetchall()
+            FROM chat_state s LEFT JOIN chat_visitors v ON v.session_id=s.session_id
+            WHERE (? IS NULL OR v.visitor_id=?)
+            ORDER BY s.updated_at DESC LIMIT ? OFFSET ?""",
+            (visitor_id, visitor_id, max(1, min(limit, 200)), max(offset, 0))).fetchall()
         return [dict(row) for row in rows]
     finally:
         conn.close()
@@ -607,12 +621,14 @@ def admin_session_detail(session_id: str):
     conn = get_conn()
     try:
         exists = conn.execute("SELECT 1 FROM chat_state WHERE session_id=?", (session_id,)).fetchone()
+        visitor = conn.execute("SELECT visitor_id, ip_address FROM chat_visitors WHERE session_id=?", (session_id,)).fetchone()
     finally:
         conn.close()
     if not exists:
         raise HTTPException(404, "Session not found")
     scenario, history = load_chat_state(session_id)
-    return {"session_id": session_id, "history": history, "results": load_chat_results(session_id),
+    return {"session_id": session_id, "visitor": dict(visitor) if visitor else None,
+            "history": history, "results": load_chat_results(session_id),
             "session": load_session_fields(session_id), "usage": get_session_usage(session_id)}
 
 

@@ -41,6 +41,13 @@ def init_chat_state_table():
         session_id TEXT PRIMARY KEY,
         fields_json TEXT NOT NULL
     )""")
+    conn.execute("""CREATE TABLE IF NOT EXISTS chat_visitors (
+        session_id TEXT PRIMARY KEY,
+        visitor_id TEXT,
+        ip_address TEXT,
+        created_at REAL DEFAULT (unixepoch('now'))
+    )""")
+    conn.execute("CREATE INDEX IF NOT EXISTS chat_visitors_visitor_idx ON chat_visitors(visitor_id)")
     conn.commit()
     conn.close()
 
@@ -109,6 +116,16 @@ def load_session_fields(session_id: str) -> dict:
     row = conn.execute("SELECT fields_json FROM chat_session_fields WHERE session_id=?", (session_id,)).fetchone()
     conn.close()
     return json.loads(row[0]) if row else {}
+
+
+def save_chat_visitor(session_id: str, visitor_id: str | None, ip_address: str) -> None:
+    conn = get_conn()
+    try:
+        conn.execute("INSERT INTO chat_visitors(session_id,visitor_id,ip_address) VALUES (?,?,?)",
+                     (session_id, visitor_id, ip_address))
+        conn.commit()
+    finally:
+        conn.close()
 
 def get_chroma():
     """Return ChromaDB collection (None if not yet ingested)."""
