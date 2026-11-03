@@ -1,36 +1,49 @@
-name: Deploy to server
+name: Deploy Advisor to BZBGEAR VPS
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: advisor-production-deploy
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          script: |
-            set -e
-            cd /opt/assistant
-            git pull --ff-only origin main
-            /opt/assistant/venv/bin/pip install -r requirements.txt -q
-            /opt/assistant/venv/bin/python audit_catalog_specs.py --db products.db --apply --backup-dir _backup_predeploy
-            /opt/assistant/venv/bin/python sync_catalog_feed.py --db products.db --apply --backup-dir _backup_predeploy
-            /opt/assistant/venv/bin/python sync_site_products.py --db products.db --apply --backup-dir _backup_predeploy
-            /opt/assistant/venv/bin/python refresh_catalog_availability.py --db products.db --apply --backup-dir _backup_predeploy
-            systemctl restart bzb-assistant.service
-            systemctl is-active --quiet bzb-assistant.service
-            healthy=0
-            for attempt in 1 2 3 4 5 6 7 8 9 10; do
-              if curl --fail --silent http://127.0.0.1:8000/health; then
-                healthy=1
-                break
-              fi
-              sleep 2
-            done
-            test "$healthy" -eq 1
+      - name: Set up SSH deploy key
+        env:
+          DEPLOY_KEY: ${{ secrets.ADVISOR_DEPLOY_SSH_KEY }}
+          BASTION_HOST_KEY: ${{ secrets.ADVISOR_BASTION_HOST_KEY }}
+          WEB_HOST_KEY: ${{ secrets.ADVISOR_WEB_HOST_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/advisor_deploy
+          chmod 600 ~/.ssh/advisor_deploy
+          printf '%s\n%s\n' "$BASTION_HOST_KEY" "$WEB_HOST_KEY" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<'EOF'
+          Host advisor-bastion
+            HostName 15.204.65.182
+            User advisor-deploy
+            IdentityFile ~/.ssh/advisor_deploy
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+          Host advisor-web
+            HostName 10.77.0.10
+            User advisor-deploy
+            IdentityFile ~/.ssh/advisor_deploy
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            ProxyJump advisor-bastion
+          EOF
+          chmod 600 ~/.ssh/config
+      - name: Deploy through VPS bastion
+        run: |
+          set -euo pipefail
+          ssh advisor-web sudo /usr/local/sbin/deploy-bzb-advisor "${GITHUB_SHA}"
