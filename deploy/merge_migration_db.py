@@ -39,9 +39,10 @@ def main():
         backups = ROOT / "_migration_backups"
         backups.mkdir(exist_ok=True)
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        backup = sqlite3.connect(backups / f"new-before-merge-{stamp}.db")
-        live.backup(backup)
-        backup.close()
+        backup_path = backups / f"new-before-merge-{stamp}.db"
+        backup_conn = sqlite3.connect(backup_path)
+        live.backup(backup_conn)
+        backup_conn.close()
 
         inserted = updated = usage_added = notes_added = 0
         live.execute("BEGIN IMMEDIATE")
@@ -87,7 +88,7 @@ def main():
             finally:
                 old_notes.close()
                 new_notes.close()
-        print(f"Merged: {inserted} sessions added, {updated} updated, {usage_added} usage rows, {notes_added} annotations. Backup: {backup}")
+        print(f"Merged: {inserted} sessions added, {updated} updated, {usage_added} usage rows, {notes_added} annotations. Backup: {backup_path}")
     finally:
         source.close()
         live.close()
