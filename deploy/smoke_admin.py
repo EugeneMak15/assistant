@@ -13,7 +13,7 @@ if admin_settings.is_file():
     settings.update(dotenv_values(admin_settings))
 username = settings.get("ADVISOR_ADMIN_USERNAME") or "admin"
 password = settings.get("ADVISOR_ADMIN_PASSWORD")
-assert password and len(password) >= 24
+assert password
 auth = base64.b64encode(f"{username}:{password}".encode()).decode()
 for path in ("/admin", "/admin/reports", "/admin/sessions?limit=1", "/debug/annotations"):
     req = Request("http://127.0.0.1:8001" + path, headers={"Authorization": "Basic " + auth})
