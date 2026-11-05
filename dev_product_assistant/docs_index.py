@@ -18,6 +18,12 @@ ROOTS = {
 }
 
 
+def names_sku(stem: str, sku: str) -> bool:
+    """Accept a SKU plus a document suffix, but not a sibling/variant SKU."""
+    suffix = r"(?:manual|user|guide|quick|setup|pb|brochure|datasheet|spec|diagram|diag|schematic|sheet|instruction)(?:[-_].*)?"
+    return bool(re.fullmatch(re.escape(sku) + r"(?:[-_]" + suffix + r")?", stem, re.I))
+
+
 def local_attachment(url: str) -> Path | None:
     parsed = urlparse(url)
     root = ROOTS.get(parsed.hostname or "")
@@ -49,7 +55,7 @@ def index_resources(skus: list[str], resources: list[dict]) -> None:
             if path is None or path.suffix.lower() != ".pdf":
                 continue
             stem = path.stem
-            matched = [sku for sku in skus if re.search(r"(?<![A-Za-z0-9_-])" + re.escape(sku) + r"(?![A-Za-z0-9_-])", stem, re.I)]
+            matched = [sku for sku in skus if names_sku(stem, sku)]
             specific = bool(matched)
             if not specific and re.search(r"BG[-_]", stem, re.I):
                 # An attached but differently named SKU brochure can belong to an older model.
@@ -96,10 +102,7 @@ def index_diagrams(skus: list[str], resources: list[dict], client) -> list[dict]
                     or path.stat().st_size > 4_000_000
                     or not re.search(r"diagram|connection|wiring|schematic|diag", title + " " + path.name, re.I)):
                 continue
-            if re.search(r"BG[-_]", path.stem, re.I) and not any(
-                re.search(r"(?<![A-Za-z0-9_-])" + re.escape(sku) + r"(?![A-Za-z0-9_-])", path.stem, re.I)
-                for sku in skus
-            ):
+            if re.search(r"BG[-_]", path.stem, re.I) and not any(names_sku(path.stem, sku) for sku in skus):
                 continue
             stamp = path.stat().st_mtime_ns
             row = db.execute("SELECT mtime,text FROM diagram_descriptions WHERE sku=? AND url=?", (skus[0], url)).fetchone()
