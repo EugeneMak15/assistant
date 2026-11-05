@@ -850,6 +850,27 @@ def _find_matching_skus_for_flow_a(requested_categories: list[str], answers: dic
     if is_selected_source_distribution(question):
         requested_categories = ["splitter"]
 
+    # TAA is a product-level catalog flag, not a device category.  A request for
+    # the complete TAA catalog therefore needs a direct flag query.  More specific
+    # requests (for example "TAA PTZ camera") continue through the normal category
+    # search and are subsequently hard-filtered by _filter_hard_requirements.
+    if not requested_categories and re.search(r"\btaa(?:[ -]compliant)?\b", question, re.I):
+        from api.db import get_conn
+        conn = get_conn()
+        try:
+            rows = conn.execute(
+                "SELECT id FROM products WHERE taa_compliant=1 "
+                "AND (stock_status IS NULL OR stock_status NOT IN "
+                "('Discontinued','Out of Stock','Not in Feed')) "
+                "AND (site_category IS NULL OR site_category!='Discontinued') "
+                "ORDER BY CASE WHEN stock_status='In Stock' THEN 0 ELSE 1 END, id"
+            ).fetchall()
+        finally:
+            conn.close()
+        return _filter_hard_requirements(
+            [row[0] for row in rows], [], answers, question
+        )
+
     # USB peripheral matrices have no HDMI ports; the video-matrix SQL path
     # would reject them and return unrelated HDMI hardware instead.
     if len(requested_categories) <= 1 and (

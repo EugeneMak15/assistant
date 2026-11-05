@@ -14,6 +14,7 @@ except ImportError:
     sys.modules["openai"] = types.SimpleNamespace(OpenAI=object)
 
 from api.scenario_planner import _find_matching_skus_for_flow_a
+from api.chat import run_chat_turn, _is_catalog_browse_request
 from api.product_rules import camera_family_key, camera_family_variants, hard_mismatch, is_selected_source_distribution, requested_distance_m, requested_ports, requested_video
 from api import db
 
@@ -141,6 +142,14 @@ class AdvisorRulesTests(unittest.TestCase):
             ),
             "product is not available for purchase",
         )
+
+    def test_any_discontinued_marker_is_never_a_recommendation(self):
+        for product in (
+            {"id": "OLD-1", "stock_status": "Discontinued"},
+            {"id": "OLD-2", "stock_status": "Limited Stock", "site_category": "Discontinued"},
+            {"id": "OLD-3", "stock_status": "In Stock", "site_categories_raw": '["Cameras", "Discontinued Products"]'},
+        ):
+            self.assertEqual(hard_mismatch(product, None, "camera"), "product is discontinued")
 
     def test_sanity_filter_cannot_restore_hard_mismatch(self):
         from api.universal_engine import _sanity_filter_candidates
@@ -344,6 +353,26 @@ class AdvisorRulesTests(unittest.TestCase):
         self.assertIn("BG-AVENTO-4K", skus)
         self.assertIn("BG-4K-44MA", skus)
         self.assertNotIn("BG-4K-VP44PRO", skus)
+
+    def test_catalog_wide_taa_request_uses_verified_flag(self):
+        turn = run_chat_turn([], "Show all TAA products", {})
+        self.assertTrue(turn["ready_to_search"])
+        self.assertEqual(turn["_scenario_plan"]["requested_categories"], [])
+        self.assertEqual(turn["_scenario_plan"]["flow"], "catalog_listing")
+        self.assertTrue(_is_catalog_browse_request("Show all capture card products"))
+        self.assertFalse(_is_catalog_browse_request("Recommend the best capture card for my setup"))
+        skus = _find_matching_skus_for_flow_a([], {}, turn["search_query"])
+        self.assertTrue(skus)
+        conn = db.get_conn()
+        try:
+            flags = dict(conn.execute(
+                f"SELECT id, taa_compliant FROM products WHERE id IN ({','.join('?' * len(skus))})",
+                skus,
+            ))
+        finally:
+            conn.close()
+        self.assertEqual(set(flags), set(skus))
+        self.assertTrue(all(value == 1 for value in flags.values()))
 
     def test_spanish_hdmi_extender_keeps_distance(self):
         question = "Necesito un extensor HDMI 4K para 80 metros."

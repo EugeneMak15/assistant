@@ -43,12 +43,19 @@ class CatalogAvailabilityTests(unittest.TestCase):
         self.assertIn(("Not in Feed", "Splitters / Amplifiers", 62.0, "BG-DA-14"), changes["updates"])
         self.assertIn("BG-DA-14", changes["missing_from_feed"])
 
-    def test_explicit_out_of_stock(self):
+    def test_discontinued_category_overrides_out_of_stock(self):
         feed = {"BG-DA-14": {
             "availability": "out_of_stock", "product_type": "Discontinued", "price": 62.0,
         }}
         changes = plan_updates(self.conn, feed)
-        self.assertIn(("Out of Stock", "Discontinued", 62.0, "BG-DA-14"), changes["updates"])
+        self.assertIn(("Discontinued", "Discontinued", 62.0, "BG-DA-14"), changes["updates"])
+
+    def test_out_of_stock_active_category(self):
+        feed = {"BG-DA-14": {
+            "availability": "out_of_stock", "product_type": "Splitters / Amplifiers", "price": 62.0,
+        }}
+        changes = plan_updates(self.conn, feed)
+        self.assertIn(("Out of Stock", "Splitters / Amplifiers", 62.0, "BG-DA-14"), changes["updates"])
 
     def test_new_sku_for_review(self):
         feed = {"NEW-SKU": {

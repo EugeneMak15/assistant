@@ -153,16 +153,25 @@ def _json_list(value) -> list:
         return []
 
 
+def is_discontinued(product: dict) -> bool:
+    """Treat every discontinued marker as a hard catalog exclusion."""
+    status = str(product.get("stock_status") or "").strip().lower()
+    categories = " ".join(str(product.get(field) or "") for field in (
+        "site_category", "site_subcategory", "site_categories_raw",
+    )).lower()
+    return status in {"discontinued", "not in feed"} or "discontinued" in categories
+
+
 def hard_mismatch(product: dict, interface: dict | None, text: str, categories: list[str] | None = None) -> str | None:
     """Return the violated hard requirement, or None if the product can be shown."""
     sku = product.get("id", "").upper()
     interface = interface or {}
     cats = " ".join(categories or []).lower()
     name = (product.get("name") or "").lower()
-    if product.get("stock_status") in {"Out of Stock", "Discontinued", "Not in Feed"}:
-        return "product is not available for purchase"
-    if product.get("site_category") == "Discontinued":
+    if is_discontinued(product):
         return "product is discontinued"
+    if product.get("stock_status") == "Out of Stock":
+        return "product is not available for purchase"
     accessory_request = bool(re.search(r"\b(?:mount|mounting|bracket|rack kit|rackmount|accessor(?:y|ies))\b", text, re.I))
     if (product.get("category") == "accessory" or any(word in name for word in ("wall mount", "ceiling mount", "mounting bracket"))) and not accessory_request:
         return "accessory, not primary equipment"

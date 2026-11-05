@@ -9,7 +9,7 @@ import os, json, math, re
 from openai import OpenAI
 from .usage import record_usage
 
-CONSULTANT_SYSTEM = """You are Alex, a senior AV Sales Consultant with 20 years of field installation experience.
+CONSULTANT_SYSTEM = """You are Roger, a senior AV Sales Consultant with 20 years of field installation experience.
 
 YOUR JOB: Gather just enough info to find the right product, then trigger search. Keep it tight — 4-6 questions max.
 STYLE: Write short, plain sentences. Never use an em dash (—) or en dash (–) in customer-facing text. Use a period, comma, or colon instead.
@@ -188,6 +188,15 @@ CONVERSATION RULES
     - "control / joystick for cameras" → PTZ CONTROLLER.
   Only ask the equipment type when the request is genuinely ambiguous. If you already called it a "matrix-style setup," the type is decided — never re-ask it.
 • Ask ONE question per turn. Acknowledge what they said, then ask the next missing piece.
+• The acknowledgement must move the selection forward, not state an obvious or unverified claim.
+  Do NOT use filler such as "X can work well", "X is a good option", "That makes sense", or
+  "Great choice". Do not claim that a device is suitable before the requirements are known.
+  Instead, briefly restate the customer's concrete goal as the action you will take, then ask one
+  targeted question. Keep this acknowledgement to one short clause.
+  BAD: "A PTZ camera can work well for conferencing. What size is the room?"
+  GOOD: "Let's find the best PTZ camera setup for your conference room. What size is the room?"
+  BAD: "A matrix switcher is a good choice. How many displays do you have?"
+  GOOD: "Let's size the right matrix switcher for your setup. How many displays need independent signals?"
 • Never re-ask something already answered. Never ask open-ended "what are you trying to accomplish?" if you already know.
 • Don't ask about irrelevant equipment (see mental model above). If venue is a bar → never ask about cameras unless they bring it up.
 • 4-6 questions total is enough. Trigger search as soon as you have what the equipment type requires.
@@ -258,6 +267,16 @@ When ready_to_search=true:
 _CAMERA_ZOOMS_CACHE: list[int] | None = None
 
 _SCOPE_REPLY = "I can help with AV equipment and setups. What equipment or connection do you need help with?"
+
+
+def _is_catalog_browse_request(message: str) -> bool:
+    # A request to display products is not a request to choose a winner.
+    if re.search(r"\b(?:best|recommend|suggest|choose|pick|select|setup|system|solution)\b", message, re.I):
+        return False
+    has_browse_verb = re.search(r"\b(?:show|list|browse|display|see)\b|покажи|перечисли|список", message, re.I)
+    has_catalog_target = re.search(r"\b(?:all|products?|models?|catalog|devices?|equipment|cameras?)\b|все|товары|продукты|камеры", message, re.I)
+    return bool(has_browse_verb and has_catalog_target)
+
 
 
 def _is_off_topic_request(message: str) -> bool:
@@ -396,6 +415,23 @@ def run_chat_turn(
                 "ready_to_search": False, "search_query": ""}
     if is_usb_matrix_request(user_text):
         return _run_usb_matrix_turn(history, user_message)
+
+    # A catalog-wide TAA request does not name a device category.  Treat it as a
+    # deliberate filtered catalog lookup instead of asking the model to invent a
+    # category (or producing an empty candidate set).
+    if (re.search(r"\btaa(?:[ -]compliant)?\b", user_message, re.I)
+            and _is_catalog_browse_request(user_message)):
+        return {
+            "message": "I’ll show the products whose TAA status is verified in the catalog.",
+            "chips": [], "state_update": {}, "ready_to_search": True,
+            "search_query": user_message,
+            "_scenario_plan": {
+                "flow": "catalog_listing", "requested_categories": [],
+                "scenario_type": "other", "scenario_summary": user_message,
+                "clarifying_questions": [],
+            },
+            "_scenario_answers": {}, "_clarification_round": 0,
+        }
 
     if (re.search(r"audio extractor|(?:pull|extract)\b.{0,20}\baudio\b", user_text, re.I)
             and re.search(r"\b(?:e?arc)\b", user_text, re.I)
@@ -587,6 +623,15 @@ def run_chat_turn(
                 msg = "Got it. Let me find the best camera options..."
             chips = []
 
+    # Explicit browsing requests go directly to catalog results, without
+    # clarifying questions or a best-product recommendation.
+    if _is_catalog_browse_request(user_message):
+        ready = True
+        chips = []
+        msg = "Here are the matching products in our catalog."
+        sq = user_message
+        intent["flow"] = "catalog_listing"
+
     # Build scenario plan from intent (used by SQL filter downstream)
     flow       = intent.get("flow", "solution_design")
     categories = intent.get("requested_categories") or []
@@ -744,7 +789,7 @@ def _normalise_res(r: str) -> str:
     return r
 
 
-FOLLOWUP_SYSTEM = """You are Alex, a senior AV consultant. The customer has ALREADY received a product search
+FOLLOWUP_SYSTEM = """You are Roger, a senior AV consultant. The customer has ALREADY received a product search
 result for a specific need, and is now asking follow-up questions in the same chat.
 Only answer AV selection, compatibility and setup questions. Decline poems, unrelated math, trivia,
 and social-media writing, even if they mention HDMI or the brand. Set scope="off_topic" for these requests.
@@ -868,7 +913,7 @@ def run_followup_turn(history: list[dict], user_message: str, results: dict) -> 
 
 def get_opening_message() -> dict:
     return {
-        "message": "Hi, I'm Alex. What AV equipment or setup do you need?",
+        "message": "Hi, I'm Roger. What AV equipment or setup do you need?",
         "chips": [
             "Home theater / living room",
             "Bar or restaurant",

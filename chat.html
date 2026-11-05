@@ -694,6 +694,50 @@
   body:not(.admin-mode) #debug-bar,
   body:not(.admin-mode) .msg-annotation,
   body:not(.admin-mode) .msg-annotate-btn { display: none !important; }
+  body.embedded-advisor > header { display: none; }
+
+  /* Embedded advisor — modern BZBGEAR visual system. */
+  :root {
+    --bg: #f4f5f6; --surface: #fff; --surface-2: #f0f1f2; --border: #dfe2e5;
+    --text: #17191d; --text-2: #555d68; --text-3: #8b939d;
+    --blue: #17191d; --blue-l: #d7a514; --blue-dim: #faf5e6; --blue-b: #e7d49a;
+    --green: #17191d; --green-l: #d7a514; --green-dim: #faf5e6; --green-b: #e7d49a;
+  }
+  body { background: linear-gradient(180deg, #fff 0, #f5f6f7 180px); }
+  header { max-width: 980px; min-height: 58px; padding: 12px 28px; border-bottom-color: #eceef0; background: rgba(255,255,255,.96); }
+  .bzb-logo { height: 31px; }
+  #new-chat { border-color: #d9dde1; border-radius: 999px; padding: 8px 15px; color: var(--text); background: #fff; font-weight: 600; }
+  #new-chat:hover { border-color: #d7a514; background: #faf5e6; }
+  #chat { max-width: 980px; gap: 16px; padding: 28px 30px 6px; }
+  .msg { gap: 12px; }
+  .avatar { width: 32px; height: 32px; border: 0 !important; font-size: 0; background: #17191d !important; color: #e1b536 !important; }
+  .avatar::before { content: ''; width: 22px; height: 17px; display: block; background: center / contain no-repeat url("data:image/svg+xml,%3Csvg viewBox='0 0 140 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M103.4 3.6c.5-.2 1-.1 1.5.1l33.3 15.7c.7.3 1.1 1 1.1 1.8v58.7c0 .7-.4 1.4-1.1 1.8l-29.5 15.4a2 2 0 0 1-1.8.1L35.5 62.9a2 2 0 0 1-1.1-1.8V38.3c0-1.5 1.5-2.4 2.8-1.8l62.4 28c5.3 2.3 11.3-1.5 11.3-7.3V36.8a8 8 0 0 0-4.5-7.2L76.8 15.4l26.6-11.8ZM34.7 3.6a2 2 0 0 1 1.4.1l67.6 31.3a2 2 0 0 1 1.2 1.8v20.4c0 1.4-1.5 2.4-2.8 1.8L39.7 31c-5.3-2.4-11.3 1.5-11.3 7.3v22.8a8 8 0 0 0 4.5 7.2L63 82.7 36 97.1a2 2 0 0 1-1.8.1L1.1 81.3A2 2 0 0 1 0 79.5V21.5a2 2 0 0 1 1.1-1.8L34.5 3.7Z' fill='%23FECB1F'/%3E%3C/svg%3E"); }
+  .msg.user .avatar { width: 42px; border-radius: 999px; background: #dce8f4 !important; color: #273b52 !important; }
+  .msg.user .avatar::before { content: 'You'; width: auto; height: auto; background: none; font: 700 11px/1 Inter, sans-serif; }
+  .bubble { max-width: min(76%, 680px); padding: 12px 16px; border-radius: 16px; font-size: 14px; line-height: 1.6; }
+  .msg.bot .bubble { border-color: #e3e5e8; border-radius: 5px 16px 16px 16px; box-shadow: 0 5px 20px rgba(17,24,39,.055); }
+  .msg.user { justify-content: flex-start; }
+  .msg.user .msg-body { flex: 0 1 72%; align-items: flex-end; }
+  .msg.user .bubble { width: auto; max-width: 100%; color: #273b52; border: 1px solid #cfdeed; border-radius: 16px 5px 16px 16px; background: #e9f2fb; box-shadow: none; }
+  .bubble strong, .msg.user .bubble strong, .bubble h2 { color: #17191d; }
+  .chips-row { padding-left: 74px; }
+  .chip { color: #17191d; border-color: #dfe2e5; box-shadow: none; }
+  .chip:hover { border-color: #d7a514; background: #faf5e6; box-shadow: none; }
+  #input-area { max-width: 980px; padding: 12px 30px 22px; gap: 12px; }
+  #input { min-height: 52px; border: 1px solid #d9dde1; border-radius: 16px; box-shadow: 0 8px 28px rgba(17,24,39,.07); }
+  #input:focus { border-color: #c89a12; box-shadow: 0 0 0 3px rgba(215,165,20,.14), 0 8px 28px rgba(17,24,39,.08); }
+  #send { width: 52px; height: 52px; border-radius: 16px; color: #fff; background: #24282d; box-shadow: 0 8px 20px rgba(17,24,39,.18); }
+  #send:hover { background: #111418; box-shadow: 0 10px 24px rgba(17,24,39,.25); }
+  #send:disabled { color: #9ba1a8; background: #e5e7e9; }
+  .product-card, .rec-block, .approach-block { border-radius: 14px; box-shadow: 0 5px 20px rgba(17,24,39,.05); }
+  .product-card-sku, .equip-sku { color: #17191d; border-color: #e7d49a; background: #faf5e6; }
+  .product-card:hover { border-color: #c89a12; box-shadow: 0 12px 32px rgba(17,24,39,.09); }
+  ::selection { background: rgba(215,165,20,.25); }
+  @media (max-width: 600px) {
+    header { padding: 10px 14px; } .bzb-logo { height: 25px; }
+    #chat { padding: 20px 14px 4px; } #input-area { padding: 10px 14px 14px; }
+    .bubble { max-width: 86%; } .chips-row { padding-left: 14px; }
+  }
 </style>
 </head>
 <body>
@@ -738,7 +782,7 @@
 <div id="chat"></div>
 
 <div id="input-area">
-  <textarea id="input" placeholder="Describe what you need to set up..." rows="1"></textarea>
+  <textarea id="input" placeholder="Describe your setup..." rows="1"></textarea>
   <button id="send" onclick="sendMessage()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -757,6 +801,7 @@
 const API = '';
 const ADMIN_MODE = location.pathname === '/admin';
 if (ADMIN_MODE) document.body.classList.add('admin-mode');
+if (new URLSearchParams(location.search).get('source') === 'dev-search') document.body.classList.add('embedded-advisor');
 const ACTIVE_CHAT_KEY = 'bzb-advisor-active-session';
 const VISITOR_KEY = 'bzb-advisor-visitor-id';
 function visitorId() {
@@ -1181,6 +1226,42 @@ function renderFinalRec(text) {
 let _msgIndex = 0;
 const _msgComments = {};   // { msgIdx: "comment text" }
 const _msgTexts   = {};    // { msgIdx: {role, text} } for saving history
+const _titleContext = [];
+const TAB_SESSION_PREFIX = 'bzb-advisor-tab-session:';
+
+function currentParentTabId() {
+  return (new URLSearchParams(window.location.search).get('tab') || '').slice(0, 160);
+}
+
+function rememberTabSession() {
+  const tabId = currentParentTabId();
+  if (!tabId || !sessionId) return;
+  try { localStorage.setItem(TAB_SESSION_PREFIX + tabId, sessionId); } catch (_) {}
+}
+
+function advisorParentOrigin() {
+  try {
+    const origin = new URL(document.referrer).origin;
+    return ['https://bzbgear.com', 'https://dev.bzbgear.com'].includes(origin) ? origin : null;
+  } catch (_) { return null; }
+}
+
+function notifyParentActivity() {
+  const origin = advisorParentOrigin();
+  if (window.parent !== window && origin) window.parent.postMessage({ type: 'bzb-advisor-activity' }, origin);
+}
+
+function updateParentTitle(text) {
+  if (window.parent === window || _titleContext.length >= 3) return;
+  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!clean || /^(yes|no|ok|okay|да|нет|ок)$/i.test(clean)) return;
+  _titleContext.push(clean);
+  window.parent.postMessage({
+    type: 'bzb-advisor-title',
+    title: _titleContext.join(' · '),
+    sessionId: sessionId || '',
+  }, advisorParentOrigin() || 'https://dev.bzbgear.com');
+}
 
 function addMessage(text, role = 'bot') {
   if (role === 'bot') text = text.replace(/—/g, ' - ').replace(/–/g, '-');
@@ -1190,6 +1271,7 @@ function addMessage(text, role = 'bot') {
   const idx = _msgIndex++;
   div.dataset.msgIdx = idx;
   _msgTexts[idx] = { role, text };
+  if (role === 'user') { notifyParentActivity(); updateParentTitle(text); }
 
   const body = document.createElement('div');
   body.className = 'msg-body';
@@ -1508,6 +1590,7 @@ async function loadSessionDetail(annId) {
 }
 
 // ─── Typing indicator ──────────────────────────────────────────────────────
+let typingStatusTimer = null;
 function showTyping() {
   const chat = document.getElementById('chat');
   const div = document.createElement('div');
@@ -1516,8 +1599,15 @@ function showTyping() {
     <div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
+  clearTimeout(typingStatusTimer);
+  typingStatusTimer = setTimeout(() => {
+    const bubble = document.querySelector('#typing .bubble');
+    if (bubble) bubble.innerHTML = '<span style="color:var(--text-2);font-size:12.5px">Analyzing your request…</span>';
+  }, 3000);
 }
 function hideTyping() {
+  clearTimeout(typingStatusTimer);
+  typingStatusTimer = null;
   const el = document.getElementById('typing');
   if (el) el.remove();
 }
@@ -2224,6 +2314,12 @@ function updateSessionBadge(sid) {
   };
 }
 
+function notifyParentSession() {
+  if (window.parent === window || !sessionId) return;
+  rememberTabSession();
+  window.parent.postMessage({ type: 'bzb-advisor-session', sessionId }, advisorParentOrigin() || 'https://dev.bzbgear.com');
+}
+
 async function init(silent = false) {
   try {
     if (!silent) {
@@ -2235,7 +2331,8 @@ async function init(silent = false) {
           const saved = await resumed.json();
           sessionId = saved.session?.session_id;
           updateSessionBadge(sessionId);
-          addMessage("Hi, I'm Alex. What AV equipment or setup do you need?", 'bot');
+          notifyParentSession();
+          addMessage("Hi, I'm Roger. What AV equipment or setup do you need?", 'bot');
           const results = [...(saved.results || [])].sort((a, b) => (a.history_index || 0) - (b.history_index || 0));
           let nextResult = 0;
           const history = saved.history || [];
@@ -2271,6 +2368,7 @@ async function init(silent = false) {
     sessionId = data.session?.session_id;
     try { if (sessionId) localStorage.setItem(ACTIVE_CHAT_KEY, sessionId); } catch (_) {}
     updateSessionBadge(sessionId);
+    notifyParentSession();
     document.getElementById('session-cost-value').textContent = '$0.00000';
     document.getElementById('session-cost').title =
       'Estimated OpenAI API cost for this session, based on reported token usage; not an invoice.';
@@ -2325,6 +2423,7 @@ async function resetChat() {
   document.getElementById('input').value = '';
   // Reset annotation state
   _msgIndex = 0;
+  _titleContext.length = 0;
   Object.keys(_msgComments).forEach(k => delete _msgComments[k]);
   Object.keys(_msgTexts).forEach(k => delete _msgTexts[k]);
   document.getElementById('debug-comment').value = '';
@@ -2333,7 +2432,42 @@ async function resetChat() {
   await init();
 }
 
-init();
+// When the advisor is opened from BZBGEAR search, accept the original search
+// as the first user message. sessionStorage prevents a browser refresh from
+// submitting the same launch prompt twice.
+async function initWithLaunchPrompt() {
+  const params = new URLSearchParams(window.location.search);
+  const prompt = (params.get('q') || '').trim().slice(0, 500);
+  const launchId = (params.get('launch') || prompt).slice(0, 600);
+  const fresh = params.get('fresh') === '1';
+  let resume = (params.get('resume') || '').trim().slice(0, 200);
+  const tabId = (params.get('tab') || '').slice(0, 160);
+  if (!resume && !fresh && tabId) {
+    try { resume = (localStorage.getItem(TAB_SESSION_PREFIX + tabId) || '').slice(0, 200); } catch (_) {}
+  }
+  if (resume) {
+    try { localStorage.setItem(ACTIVE_CHAT_KEY, resume); } catch (_) {}
+  }
+  if (fresh) {
+    try { localStorage.removeItem(ACTIVE_CHAT_KEY); } catch (_) {}
+  }
+  const ready = await init(false, fresh);
+  if (!ready) return;
+  if (!prompt || !launchId) return;
+
+  const launchKey = 'bzb-advisor-launch-' + launchId;
+  try {
+    if (sessionStorage.getItem(launchKey) === 'sent') return;
+    sessionStorage.setItem(launchKey, 'sent');
+  } catch (_) {}
+
+  const input = document.getElementById('input');
+  input.value = prompt;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  window.setTimeout(() => sendMessage(), 180);
+}
+
+initWithLaunchPrompt();
 </script>
 </body>
 </html>

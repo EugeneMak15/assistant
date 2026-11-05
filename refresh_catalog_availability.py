@@ -67,15 +67,17 @@ def plan_updates(conn: sqlite3.Connection, feed: dict[str, dict], taa_skus: set[
             status, site_category, price = "Not in Feed", row["site_category"], row["price_usd"]
         else:
             availability = product["availability"]
-            if availability in {"out_of_stock", "out of stock"}:
-                status = "Out of Stock"
-            elif availability == "discontinued":
+            raw_category = product["product_type"].split(">", 1)[0].strip()
+            discontinued_category = "discontinued" in raw_category.lower()
+            if availability == "discontinued" or discontinued_category:
                 status = "Discontinued"
+            elif availability in {"out_of_stock", "out of stock"}:
+                status = "Out of Stock"
             elif availability == "preorder":
                 status = "Pre-Order"
             else:
                 status = "In Stock"
-            site_category = product["product_type"].split(">", 1)[0].strip() or row["site_category"]
+            site_category = "Discontinued" if discontinued_category else (raw_category or row["site_category"])
             price = product["price"] if product["price"] is not None else row["price_usd"]
         if (status, site_category, price) != (
             row["stock_status"], row["site_category"], row["price_usd"]

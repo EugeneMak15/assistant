@@ -31,6 +31,7 @@ from api.db import (get_conn, row_to_dict, init_chat_state_table, save_chat_stat
                     save_session_fields, load_session_fields, save_chat_visitor)
 from api.usage import init_usage_table, track_session, get_session_usage
 from api.launch_controls import init_launch_tables, is_admin, admin_challenge, enforce_daily_limit, client_ip
+from api.admin_reports import get_chat_report
 
 init_chat_state_table()
 init_usage_table()
@@ -78,6 +79,25 @@ def serve_ui():
 @app.get("/admin", include_in_schema=False)
 def serve_admin():
     return FileResponse("chat.html", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
+
+@app.get("/admin/reports", include_in_schema=False)
+def serve_admin_reports():
+    return FileResponse("admin-reports.html", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
+
+@app.get("/admin/reports/data", tags=["Admin"])
+def admin_reports_data(
+    from_date: str = Query(..., alias="from"),
+    to_date: str = Query(..., alias="to"),
+    ip: str = Query("", max_length=64),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
+):
+    try:
+        return get_chat_report(from_date, to_date, ip, page, page_size)
+    except ValueError:
+        raise HTTPException(400, "Dates must use YYYY-MM-DD format")
 
 
 # ─── Health ───────────────────────────────────────────────────────────────────
@@ -507,7 +527,7 @@ def _chat_message(body: ChatMessage):
 
         # ── Phase 1: SQL candidates (fast) ────────────────────────────────────
         from api.scenario_planner import _find_matching_skus_for_flow_a
-        if flow in ("product_selection", "hybrid"):
+        if flow in ("product_selection", "hybrid", "catalog_listing"):
             categories = scenario_plan.get("requested_categories", [])
             sql_skus = _find_matching_skus_for_flow_a(categories, scenario_answers, search_query)
         else:
@@ -798,6 +818,24 @@ def stream_recommendation_sse(session_id: str):
                     _scenario_state.setdefault(session_id, {}).pop("_refining_search", None)
                     save_chat_state(session_id, _scenario_state[session_id], _chat_histories.get(session_id, []))
                     result_saved = True
+
+        if flow == "catalog_listing":
+            # Listing mode emits every eligible product and no LLM opinion.
+            for sku in sql_skus:
+                conn = get_conn()
+                try:
+                    row = conn.execute("SELECT * FROM products WHERE id=?", (sku,)).fetchone()
+                finally:
+                    conn.close()
+                if not row:
+                    continue
+                product = Product(**row_to_dict(row))
+                collected_skus.append(sku)
+                yield f"data: {_json.dumps({'type': 'product', 'product': product.model_dump()})}\n\n"
+            full_text.append("Catalog listing only; no product ranking requested.")
+            _save_followup()
+            yield f"data: {_json.dumps({'type': 'done'})}\n\n"
+            return
 
         if flow in ("product_selection", "hybrid"):
             gen = stream_flow_a_recommendation(

@@ -67,6 +67,7 @@ def alert_once(day, kind, subject, title, body):
 
 
 def is_admin(request) -> bool:
+    expected_user = os.getenv("ADVISOR_ADMIN_USERNAME", "admin")
     expected = os.getenv("ADVISOR_ADMIN_PASSWORD", "")
     header = request.headers.get("authorization", "")
     if not expected or not header.lower().startswith("basic "):
@@ -75,7 +76,7 @@ def is_admin(request) -> bool:
         user, password = base64.b64decode(header[6:], validate=True).decode().split(":", 1)
     except (ValueError, UnicodeError):
         return False
-    return hmac.compare_digest(user, "admin") and hmac.compare_digest(password, expected)
+    return hmac.compare_digest(user, expected_user) and hmac.compare_digest(password, expected)
 
 
 def admin_challenge():
