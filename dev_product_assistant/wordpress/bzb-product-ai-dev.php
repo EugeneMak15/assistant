@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BZB Product AI (Dev)
  * Description: SKU-scoped product Q&A for dev.bzbgear.com only.
- * Version: 0.1.2
+ * Version: 0.1.4
  */
 defined('ABSPATH') || exit;
 if (wp_parse_url(home_url(), PHP_URL_HOST) !== 'dev.bzbgear.com') return;
@@ -117,7 +117,7 @@ function bzb_product_ai_context($id) {
 function bzb_product_ai_articles($skus) {
     $skus = array_values(array_filter($skus));
     if (!$skus) return [];
-    $key = 'bzb_product_ai_articles_' . md5(implode('|', $skus));
+    $key = 'bzb_product_ai_articles_v2_' . md5(implode('|', $skus));
     $cached = get_transient($key);
     if (is_array($cached)) return $cached;
     global $wpdb;
@@ -125,7 +125,7 @@ function bzb_product_ai_articles($skus) {
     foreach (array_slice($skus, 0, 30) as $sku) {
         $like = '%' . $wpdb->esc_like($sku) . '%';
         $ids = array_merge($ids, $wpdb->get_col($wpdb->prepare(
-            "SELECT ID FROM {$wpdb->posts} WHERE post_status='publish' AND post_type NOT IN ('product','product_variation','attachment','page') AND (post_title LIKE %s OR post_content LIKE %s) LIMIT 30",
+            "SELECT ID FROM {$wpdb->posts} WHERE post_status='publish' AND post_type IN ('post','knowledge_base','solution','case','faq_item') AND (post_title LIKE %s OR post_content LIKE %s) LIMIT 30",
             $like, $like
         )));
     }

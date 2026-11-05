@@ -48,6 +48,14 @@ def index_resources(skus: list[str], resources: list[dict]) -> None:
             path = local_attachment(url)
             if path is None or path.suffix.lower() != ".pdf":
                 continue
+            stem = path.stem
+            specific = any(re.search(r"(?<![A-Za-z0-9_-])" + re.escape(sku) + r"(?![A-Za-z0-9_-])", stem, re.I) for sku in skus)
+            if not specific and re.search(r"BG[-_]", stem, re.I):
+                # An attached but differently named SKU brochure can belong to an older model.
+                continue
+            if not specific and not re.search(r"manual|guide|setup", item.get("title", ""), re.I):
+                continue
+            label = item.get("title", "PDF") if specific else "Shared setup guide: " + item.get("title", "PDF")
             stat = path.stat()
             for sku in skus:
                 old = db.execute("SELECT mtime,size FROM indexed_files WHERE sku=? AND url=?", (sku, url)).fetchone()
@@ -63,7 +71,7 @@ def index_resources(skus: list[str], resources: list[dict]) -> None:
                         for pos in range(0, len(text), 1800):
                             chunk = text[pos:pos + 2200]
                             db.execute("INSERT INTO doc_chunks(sku,title,url,text) VALUES(?,?,?,?)",
-                                       (sku, f"{item.get('title', 'PDF')} p. {page_num}", url, chunk))
+                                       (sku, f"{label} p. {page_num}", url, chunk))
                     db.execute("INSERT OR REPLACE INTO indexed_files VALUES(?,?,?,?)",
                                (sku, url, stat.st_mtime_ns, stat.st_size))
                     db.commit()
