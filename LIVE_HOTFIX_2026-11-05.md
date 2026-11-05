@@ -1,0 +1,12 @@
+# Live Advisor browse-intent hotfix (2026-11-05)
+
+The production `/opt/assistant` tree already had substantial uncommitted changes from another active workstream (Roger branding, TAA catalog sync, embedded UI, admin reports). To preserve them, this task made narrow, backed-up edits directly on the live files rather than replacing them with the older local Git versions. **Reconcile the production tree with Git before the next `main` deployment**; do not overwrite the live files with the old repository copies.
+
+- `deploy/patch_live_catalog_listing.py` added a catalog-listing intent path to the live `api/chat.py` and `main.py`: explicit "show/list/browse products" requests stream all eligible product cards and no LLM ranking text. The normal recommendation path remains for "best/recommend/choose/setup" requests. The TAA list uses the verified `taa_compliant` flag already present in the live catalog.
+- `deploy/patch_live_taa_browse_guard.py` prevents "recommend TAA products" from being mistaken for a catalog listing.
+- `deploy/patch_live_advisor_bridge.py` reports each user message to the embedding tab manager and sends parent messages to the verified BZBGEAR or dev origin.
+- The WordPress bridge at `wp-content/plugins/bzb-search/ai-advisor-bridge.js` on `bzb-web01` was patched with `tools/fix_bzb_advisor_tab_reuse.py` in the website workspace. It reuses an unused empty tab for the first transferred search query and preserves conversations with user activity. The plugin asset version was bumped to `v043`.
+
+Production backups: `/opt/assistant/.codex-backups/catalog-listing-20261105T170552Z`, `/opt/assistant/chat.html.bak-20261105T170237Z-tab-activity`, `/opt/assistant/api/chat.py.bak-20261105T171127Z-taa-browse-guard`, and `ai-advisor-bridge.js.bak-20261105T170107Z-blank-tab-reuse` beside the WordPress plugin.
+
+Checks: 35 targeted Advisor tests pass. Full suite has one unrelated current failure, `test_explicit_out_of_stock`, because the live catalog now marks `BG-DA-14` Discontinued rather than Out of Stock. Live TAA browse emitted 46 product events and zero recommendation-text events; capture-card browse emitted 15 products and zero recommendation-text events; a "recommend best" request stayed in selection mode. Headless Chrome test confirmed the first search reused one blank tab, a second search created a second tab without losing the first 46 cards, and a manually added blank tab was reused by a later search.
