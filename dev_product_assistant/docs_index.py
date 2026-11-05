@@ -27,7 +27,7 @@ def local_attachment(url: str) -> Path | None:
     path = (root / unquote(parsed.path[len(prefix):])).resolve()
     if not path.is_relative_to(root.resolve()) or not path.is_file():
         return None
-    if path.stat().st_size > 20_000_000:
+    if path.stat().st_size > 30_000_000:
         return None
     return path
 
@@ -49,7 +49,8 @@ def index_resources(skus: list[str], resources: list[dict]) -> None:
             if path is None or path.suffix.lower() != ".pdf":
                 continue
             stem = path.stem
-            specific = any(re.search(r"(?<![A-Za-z0-9_-])" + re.escape(sku) + r"(?![A-Za-z0-9_-])", stem, re.I) for sku in skus)
+            matched = [sku for sku in skus if re.search(r"(?<![A-Za-z0-9_-])" + re.escape(sku) + r"(?![A-Za-z0-9_-])", stem, re.I)]
+            specific = bool(matched)
             if not specific and re.search(r"BG[-_]", stem, re.I):
                 # An attached but differently named SKU brochure can belong to an older model.
                 continue
@@ -57,14 +58,15 @@ def index_resources(skus: list[str], resources: list[dict]) -> None:
                 continue
             label = item.get("title", "PDF") if specific else "Shared setup guide: " + item.get("title", "PDF")
             stat = path.stat()
-            for sku in skus:
+            target_skus = skus if not matched or skus[0] in matched else [skus[0], *matched]
+            for sku in target_skus:
                 old = db.execute("SELECT mtime,size FROM indexed_files WHERE sku=? AND url=?", (sku, url)).fetchone()
                 if old == (stat.st_mtime_ns, stat.st_size):
                     continue
                 db.execute("DELETE FROM doc_chunks WHERE sku=? AND url=?", (sku, url))
                 try:
                     reader = PdfReader(str(path))
-                    for page_num, page in enumerate(reader.pages[:100], 1):
+                    for page_num, page in enumerate(reader.pages[:200], 1):
                         text = re.sub(r"\s+", " ", page.extract_text() or "").strip()
                         if len(text) < 60:
                             continue
@@ -93,6 +95,11 @@ def index_diagrams(skus: list[str], resources: list[dict], client) -> list[dict]
             if (path is None or path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}
                     or path.stat().st_size > 4_000_000
                     or not re.search(r"diagram|connection|wiring|schematic|diag", title + " " + path.name, re.I)):
+                continue
+            if re.search(r"BG[-_]", path.stem, re.I) and not any(
+                re.search(r"(?<![A-Za-z0-9_-])" + re.escape(sku) + r"(?![A-Za-z0-9_-])", path.stem, re.I)
+                for sku in skus
+            ):
                 continue
             stamp = path.stat().st_mtime_ns
             row = db.execute("SELECT mtime,text FROM diagram_descriptions WHERE sku=? AND url=?", (skus[0], url)).fetchone()
