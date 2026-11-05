@@ -1,0 +1,23 @@
+[Unit]
+Description=BZBGEAR Dev product-specific AI assistant
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=advisor
+Group=advisor
+WorkingDirectory=/opt/product-assistant-dev
+EnvironmentFile=/opt/assistant/.env
+Environment=PRODUCT_AI_CHROMA=/opt/assistant/chroma_db
+Environment=PYTHONPATH=/opt/product-assistant-dev/vendor
+ExecStart=/opt/assistant/venv/bin/uvicorn app:app --host 127.0.0.1 --port 8002
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/product-assistant-dev
+
+[Install]
+WantedBy=multi-user.target
