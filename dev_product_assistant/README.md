@@ -8,6 +8,8 @@ This feature is separate from the general Advisor. It answers questions about th
 - `app.py`: loopback-only FastAPI service on port 8002, running as `advisor`. It uses the existing OpenAI key from `/opt/assistant/.env` and exact-SKU matching only.
 - `docs_index.py`: lazily indexes locally attached PDFs in an isolated FTS database (`/opt/product-assistant-dev/product_docs.db`). Attached diagram images are described once and cached. Live Dev blog/KB articles mentioning the exact SKU are also supplied by WordPress. The older Advisor Chroma data is supplemental, not authoritative when it conflicts with the current product page.
 
+Only English-language source materials are used. Non-English auto-translated manuals and diagrams are excluded from product Q&A and the Dev index.
+
 The Dev site currently uses Basic Auth and blocks `wp_remote_post` in migration preview, so the plugin talks to the loopback service with a fixed-address cURL call. The chat uses `admin-ajax.php` because Dev Basic Auth is interpreted as invalid WordPress application-password credentials on REST requests. Neither protection is disabled.
 
 ## Deploy

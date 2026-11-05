@@ -24,6 +24,13 @@ def names_sku(stem: str, sku: str) -> bool:
     return bool(re.fullmatch(re.escape(sku) + r"(?:[-_]" + suffix + r")?", stem, re.I))
 
 
+def english_document(title: str, url: str) -> bool:
+    label = (title + " " + url).lower()
+    if re.search(r"\b(spanish|español|french|français|german|deutsch|portuguese|italian|russian|chinese|japanese|korean)\b", label):
+        return False
+    return not re.search(r"(?:^|[/_.-])(?:es|es-mx|fr|de|pt|it|ru|zh|ja|ko)(?:[/_.-]|$)", urlparse(url).path.lower())
+
+
 def local_attachment(url: str) -> Path | None:
     parsed = urlparse(url)
     root = ROOTS.get(parsed.hostname or "")
@@ -51,6 +58,8 @@ def index_resources(skus: list[str], resources: list[dict]) -> None:
     try:
         for item in resources:
             url = item.get("url", "")
+            if not english_document(item.get("title", ""), url):
+                continue
             path = local_attachment(url)
             if path is None or path.suffix.lower() != ".pdf":
                 continue
@@ -97,6 +106,8 @@ def index_diagrams(skus: list[str], resources: list[dict], client) -> list[dict]
         for item in resources:
             url = item.get("url", "")
             title = item.get("title", "")
+            if not english_document(title, url):
+                continue
             path = local_attachment(url)
             if (path is None or path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}
                     or path.stat().st_size > 4_000_000

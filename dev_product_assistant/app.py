@@ -2,17 +2,19 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 from urllib.parse import urlparse
 
 import chromadb
 from fastapi import FastAPI, HTTPException
-from openai import OpenAI
+from openai import OpenAI, RateLimitError
 from pydantic import BaseModel, Field
 from docs_index import index_diagrams, index_resources, search as search_pdfs
 
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+logger = logging.getLogger(__name__)
 client = OpenAI()
 chroma = chromadb.PersistentClient(path=os.getenv("PRODUCT_AI_CHROMA", "/opt/assistant/chroma_db"))
 SKU_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{1,79}$")
@@ -38,6 +40,13 @@ class Ask(BaseModel):
 def valid_url(url: str) -> bool:
     parsed = urlparse(url)
     return parsed.scheme == "https" and parsed.hostname in {"bzbgear.com", "www.bzbgear.com", "dev.bzbgear.com"}
+
+
+def english_source(title: str, url: str) -> bool:
+    label = (title + " " + url).lower()
+    if re.search(r"\b(spanish|español|french|français|german|deutsch|portuguese|italian|russian|chinese|japanese|korean)\b", label):
+        return False
+    return not re.search(r"(?:^|[/_.-])(?:es|es-mx|fr|de|pt|it|ru|zh|ja|ko)(?:[/_.-]|$)", urlparse(url).path.lower())
 
 
 def retrieve(skus: list[str], question: str, manual_url: str | None) -> tuple[list[dict], list[Source]]:
@@ -70,7 +79,7 @@ def retrieve(skus: list[str], question: str, manual_url: str | None) -> tuple[li
                 if not any(sku in related for sku in skus):
                     continue
                 url = meta.get("url") or meta.get("source") or ""
-                if not valid_url(url):
+                if not valid_url(url) or not english_source(meta.get("title", ""), url):
                     continue
                 passages.append({"kind": "Article", "title": meta.get("title") or "Product article", "text": doc[:2200]})
                 if not any(s.url == url for s in links):
@@ -92,7 +101,7 @@ def ask(req: Ask):
     if not SKU_RE.fullmatch(req.sku) or not valid_url(req.product_url):
         raise HTTPException(400, "Invalid product")
     skus = [req.sku] + [s for s in req.variant_skus if SKU_RE.fullmatch(s) and s != req.sku]
-    resources = [source for source in req.resources if valid_url(source.url)]
+    resources = [source for source in req.resources if valid_url(source.url) and english_source(source.title, source.url)]
     manual_url = next((s.url for s in resources if "manual" in s.title.lower() and "english" in s.title.lower()), None)
     if not manual_url:
         manual_url = next((s.url for s in resources if "manual" in s.title.lower()), None)
@@ -105,7 +114,7 @@ def ask(req: Ask):
         pass
     for article in req.articles:
         url = article.get("url", "")
-        if not valid_url(url):
+        if not valid_url(url) or not english_source(article.get("title", ""), url):
             continue
         passages.append({"kind": "Product article", "title": article.get("title", "")[:160],
                          "url": url, "text": article.get("text", "")[:3000]})
@@ -129,6 +138,7 @@ def ask(req: Ask):
         "Use ONLY facts in PRODUCT_CONTEXT; retrieved articles may include other products, so use only facts explicitly about this SKU. "
         "Treat the current Dev product page and its attached PDF/diagram as more authoritative than older Advisor index passages. If sources conflict, say so rather than silently choose a value. "
         "A document labeled Shared setup guide can explain general procedures, but must not establish this product's specifications. "
+        "Use English-language source materials only; answer in the customer's language when possible. "
         "Never transfer a specification, capability, port, cable distance, or compatibility claim from another model. "
         "Do not recommend alternatives or turn a request for product facts into a shopping consultation. "
         "If a requested fact is not established, say you cannot confirm it from the available product materials. "
@@ -147,7 +157,13 @@ def ask(req: Ask):
     try:
         response = client.chat.completions.create(model=os.getenv("PRODUCT_AI_MODEL", "gpt-5.6-sol"),
                                                   messages=messages, max_completion_tokens=650)
+    except RateLimitError as exc:
+        logger.warning("product AI rate limited: status=%s code=%s retry_after=%s",
+                       getattr(exc, "status_code", "n/a"), getattr(exc, "code", "n/a"),
+                       getattr(getattr(exc, "response", None), "headers", {}).get("retry-after", "n/a"))
+        raise HTTPException(429, "Product assistant is busy. Please try again shortly") from exc
     except Exception as exc:
+        logger.error("product AI model failure: %s status=%s", type(exc).__name__, getattr(exc, "status_code", "n/a"))
         raise HTTPException(502, "The product assistant is temporarily unavailable") from exc
     answer = (response.choices[0].message.content or "").strip()
     cited = {int(n) for n in re.findall(r"\[(\d{1,2})\]", answer)}

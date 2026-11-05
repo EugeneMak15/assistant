@@ -100,6 +100,8 @@ function bzb_product_ai_context($id) {
             $raw = ($file['type'] ?? '') === 'url' ? ($file['url'] ?? '') : ($file['file'] ?? '');
             $url = is_array($raw) ? ($raw['url'] ?? '') : (is_numeric($raw) ? wp_get_attachment_url((int) $raw) : $raw);
             if (!$url || !wp_http_validate_url($url)) continue;
+            if (preg_match('/\b(spanish|espa[nñ]ol|french|german|portuguese|italian|russian|chinese|japanese|korean)\b/i', ($file['name'] ?? '') . ' ' . $url)) continue;
+            if (preg_match('/(?:^|[\/_.-])(es|es-mx|fr|de|pt|it|ru|zh|ja|ko)(?:[\/_.-]|$)/i', wp_parse_url($url, PHP_URL_PATH))) continue;
             $resources[] = ['title' => bzb_product_ai_plain($file['name'] ?? 'Product document', 160), 'url' => esc_url_raw($url)];
         }
     }
@@ -177,6 +179,7 @@ function bzb_product_ai_answer(WP_REST_Request $request) {
             $raw = curl_exec($curl);
             $status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
             curl_close($curl);
+            if ($status === 429) return new WP_Error('busy', 'Product assistant is busy. Please try again shortly.', ['status' => 429]);
             if ($raw === false || $status !== 200) {
                 return new WP_Error('unavailable', 'Product assistant is temporarily unavailable.', ['status' => 503]);
             }
