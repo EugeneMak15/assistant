@@ -161,6 +161,8 @@ def ask(req: Ask):
         logger.warning("product AI rate limited: status=%s code=%s retry_after=%s",
                        getattr(exc, "status_code", "n/a"), getattr(exc, "code", "n/a"),
                        getattr(getattr(exc, "response", None), "headers", {}).get("retry-after", "n/a"))
+        if getattr(exc, "code", None) == "credit_balance_exhausted":
+            raise HTTPException(503, "Product assistant is temporarily unavailable") from exc
         raise HTTPException(429, "Product assistant is busy. Please try again shortly") from exc
     except Exception as exc:
         logger.error("product AI model failure: %s status=%s", type(exc).__name__, getattr(exc, "status_code", "n/a"))
